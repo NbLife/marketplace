@@ -6,6 +6,13 @@ on:
       - main
   workflow_dispatch:
 
+- name: Install dependencies
+  run: |
+    python -m venv antenv
+    source antenv/bin/activate
+    pip install --upgrade pip
+    pip install -r requirements.txt
+
 jobs:
   build-frontend:
     runs-on: ubuntu-latest
