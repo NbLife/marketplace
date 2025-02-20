@@ -1,9 +1,9 @@
-fastapi==0.100.0
-uvicorn==0.27.0
-gunicorn==21.2.0
-pymongo==4.9.0
-python-dotenv==1.0.0
-azure-storage-blob==12.16.0
-motor==3.4.0
-python-multipart==0.0.20
+gunicorn
+pymongo
+python-dotenv
+azure-storage-blob
+motor
+fastapi
+uvicorn
+python-multipart  
 
