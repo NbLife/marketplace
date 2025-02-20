@@ -18,7 +18,8 @@ AZURE_STORAGE_ACCOUNT_NAME = os.getenv("AZURE_STORAGE_ACCOUNT_NAME")
 CONTAINER_NAME = "product-images"
 
 
-SECRET_KEY = os.getenv("SECRET_KEY", "53206fb0ab54cb88d6f34be379353f09fd9906ffe2b5c92e4aea34998ae46524")
+SECRET_KEY = os.getenv("SECRET_KEY")
+AZURE_CLIENT_SECRET = os.getenv("AZURE_CLIENT_SECRET")
 
 
 # 🔹 Połączenie z Cosmos DB (MongoDB API)
@@ -26,16 +27,16 @@ try:
     client = MongoClient(COSMOS_DB_URL)
     db = client.marketplace
     collection = db.products
-    print("✅ Połączono z Cosmos DB (MongoDB API)")
+    print("Połączono z Cosmos DB (MongoDB API)")
 except Exception as e:
-    print(f"❌ Błąd połączenia z Cosmos DB: {e}")
+    print(f"Błąd połączenia z Cosmos DB: {e}")
 
 # 🔹 Połączenie z Azure Blob Storage
 try:
     blob_service_client = BlobServiceClient.from_connection_string(AZURE_BLOB_CONNECTION_STRING)
-    print("✅ Połączono z Azure Blob Storage")
+    print("Połączono z Azure Blob Storage")
 except Exception as e:
-    print(f"❌ Błąd połączenia z Blob Storage: {e}")
+    print(f"Błąd połączenia z Blob Storage: {e}")
 
 # 🔹 Obsługa CORS dla frontendu
 origins = [
