@@ -31,7 +31,7 @@ except Exception as e:
 
 # 🔹 Obsługa CORS dla frontendu
 origins = [
-    "https://red-tree-02e732c0f.4.azurestaticapps.net",
+    "https://orange-ocean-095b25503.4.azurestaticapps.net",
     "https://my-backend-fastapi.azurewebsites.net"
 ]
 app.add_middleware(
