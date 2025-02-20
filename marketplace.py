@@ -7,6 +7,10 @@ from bson import ObjectId
 
 app = FastAPI()
 
+from marketplace import app  # Import aplikacji z pliku marketplace.py
+
+
+
 # 🔹 Pobranie Connection String do Cosmos DB (MongoDB API) i Azure Blob Storage
 COSMOS_DB_URL = os.getenv("COSMOS_DB_URL")  # Używamy poprawnego connection stringa dla MongoDB API
 AZURE_BLOB_CONNECTION_STRING = os.getenv("AZURE_BLOB_STORAGE_CONNECTION_STRING")
