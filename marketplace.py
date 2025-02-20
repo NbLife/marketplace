@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pymongo import MongoClient
 from azure.storage.blob import BlobServiceClient
 from bson import ObjectId
+from dotenv import load_dotenv
 
 app = FastAPI()
 
