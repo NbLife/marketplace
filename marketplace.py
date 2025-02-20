@@ -13,6 +13,10 @@ AZURE_BLOB_CONNECTION_STRING = os.getenv("AZURE_BLOB_STORAGE_CONNECTION_STRING")
 AZURE_STORAGE_ACCOUNT_NAME = os.getenv("AZURE_STORAGE_ACCOUNT_NAME")  
 CONTAINER_NAME = "product-images"
 
+
+SECRET_KEY = os.getenv("SECRET_KEY", "53206fb0ab54cb88d6f34be379353f09fd9906ffe2b5c92e4aea34998ae46524")
+
+
 # 🔹 Połączenie z Cosmos DB (MongoDB API)
 try:
     client = MongoClient(COSMOS_DB_URL)
@@ -100,6 +104,3 @@ if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
 
-@app.get("/health")
-async def health_check():
-    return {"status": "ok"}
