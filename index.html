@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Azure Marketplace</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            text-align: center;
+        }
+        #products {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .product {
+            background: white;
+            padding: 15px;
+            margin: 10px;
+            width: 200px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        input, select, button {
+            margin: 5px;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Azure Marketplace</h1>
+
+    <input type="text" id="search" placeholder="Search products" onkeyup="fetchProducts()">
+    <select id="categoryFilter" onchange="fetchProducts()">
+        <option value="all">All Categories</option>
+        <option value="Electronics">Electronics</option>
+        <option value="Clothing">Clothing</option>
+        <option value="Home">Home</option>
+        <option value="Books">Books</option>
+        <option value="Beauty">Beauty</option>
+        <option value="Sports">Sports</option>
+        <option value="Toys">Toys</option>
+        <option value="Others">Others</option>
+    </select>
+    <button onclick="showAddProductForm()">Add Product</button>
+
+    <div id="products"></div>
+
+    <div id="addProductForm" style="display:none;">
+        <h2>Add Product</h2>
+        <input type="text" id="productName" placeholder="Product Name">
+        <input type="text" id="productDescription" placeholder="Description">
+        <input type="number" id="productPrice" placeholder="Price">
+        <select id="productCategory">
+            <option value="Electronics">Electronics</option>
+            <option value="Clothing">Clothing</option>
+            <option value="Home">Home</option>
+            <option value="Books">Books</option>
+            <option value="Beauty">Beauty</option>
+            <option value="Sports">Sports</option>
+            <option value="Toys">Toys</option>
+            <option value="Others">Others</option>
+        </select>
+        <input type="file" id="productImage">
+        <button onclick="addProduct()">Submit</button>
+        <button onclick="document.getElementById('addProductForm').style.display='none'">Close</button>
+    </div>
+
+    <script>
+        const BACKEND_URL = "https://my-backend-fastapi.azurewebsites.net";
+
+        async function fetchProducts() {
+            const searchQuery = document.getElementById('search').value.toLowerCase();
+            const selectedCategory = document.getElementById('categoryFilter').value;
+
+            const response = await fetch(`${BACKEND_URL}/products`);
+            const products = await response.json();
+            const container = document.getElementById("products");
+            container.innerHTML = "";
+
+            products.forEach(product => {
+                if ((selectedCategory === "all" || product.category === selectedCategory) &&
+                    (product.name.toLowerCase().includes(searchQuery) || product.description.toLowerCase().includes(searchQuery))) {
+                    container.innerHTML += `
+                        <div class="product">
+                            <h3>${product.name}</h3>
+                            <p>${product.description}</p>
+                            <p><strong>${product.price} PLN</strong></p>
+                            <img src="${product.image_url}" width="150">
+                        </div>`;
+                }
+            });
+        }
+
+        async function addProduct() {
+            const name = document.getElementById('productName').value;
+            const description = document.getElementById('productDescription').value;
+            const price = document.getElementById('productPrice').value;
+            const category = document.getElementById('productCategory').value;
+            const image = document.getElementById('productImage').files[0];
+
+            if (!name || !description || !price || !image) {
+                alert("All fields are required!");
+                return;
+            }
+
+            let formData = new FormData();
+            formData.append("name", name);
+            formData.append("description", description);
+            formData.append("price", price);
+            formData.append("category", category);
+            formData.append("image", image);
+
+            try {
+                let response = await fetch(`${BACKEND_URL}/add_product`, {
+                    method: "POST",
+                    body: formData
+                });
+
+                let result = await response.json();
+                alert(result.message);
+                document.getElementById('addProductForm').style.display = 'none';
+                fetchProducts();
+            } catch (error) {
+                console.error("Error adding product:", error);
+            }
+        }
+
+        fetchProducts();
+    </script>
+
+</body>
+</html>
