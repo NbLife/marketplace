@@ -83,7 +83,11 @@ async def add_product(
         blob_client.upload_blob(image.file, overwrite=True)
 
         # 🔹 Tworzenie URL do pobrania obrazu z Azure Blob Storage
-        image_url = f"https://{AZURE_STORAGE_ACCOUNT_NAME}.blob.core.windows.net/{CONTAINER_NAME}/{image.filename}"
+        from urllib.parse import quote
+
+        encoded_filename = quote(image.filename)
+        image_url = f"https://{AZURE_STORAGE_ACCOUNT_NAME}.blob.core.windows.net/{CONTAINER_NAME}/{encoded_filename}"
+
 
         # 🔹 Zapis produktu do Cosmos DB
         product = {
