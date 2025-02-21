@@ -5,6 +5,10 @@ from pymongo import MongoClient
 from azure.storage.blob import BlobServiceClient
 from bson import ObjectId
 from dotenv import load_dotenv
+import logging
+
+# Konfiguracja logowania błędów
+logging.basicConfig(level=logging.ERROR)
 
 # Wczytaj zmienne środowiskowe z pliku .env (tylko dla lokalnych testów)
 load_dotenv()
@@ -54,13 +58,13 @@ def read_root():
 
 @app.get("/products")
 def get_products():
-    """ Pobiera listę produktów z Cosmos DB """
     try:
         products = list(collection.find({}, {"_id": 1, "name": 1, "description": 1, "price": 1, "category": 1, "image_url": 1}))
-        return [{"id": str(p["_id"]), **p} for p in products]
+        return [{"id": str(p["_id"]), "name": p["name"], "description": p["description"], "price": p["price"], "category": p["category"], "image_url": p["image_url"]} for p in products]
     except Exception as e:
+        logging.error(f"Błąd pobierania produktów: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Błąd pobierania produktów: {str(e)}")
-
+    
 @app.post("/add_product")
 async def add_product(
     name: str = Form(...),
@@ -122,17 +126,5 @@ if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))  # Pobiera port od Azure, domyślnie 8000
     uvicorn.run(app, host="0.0.0.0", port=port)
 
-import logging
 
-# Konfiguracja logowania błędów
-logging.basicConfig(level=logging.ERROR)
 
-@app.get("/products")
-def get_products():
-    try:
-        products = list(collection.find({}, {"_id": 1, "name": 1, "description": 1, "price": 1, "category": 1, "image_url": 1}))
-        return [{"id": str(p["_id"]), "name": p["name"], "description": p["description"], "price": p["price"], "category": p["category"], "image_url": p["image_url"]} for p in products]
-    except Exception as e:
-        logging.error(f"Błąd pobierania produktów: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Błąd pobierania produktów: {str(e)}")
-    
