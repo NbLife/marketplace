@@ -42,7 +42,7 @@ except Exception as e:
 # 🔹 Obsługa CORS dla frontendu
 origins = [
     "https://orange-ocean-095b25503.4.azurestaticapps.net",
-    "https://my-api.azurewebsites.net"
+    "https://my-backend-fastapi.azurewebsites.net"
 ]
 app.add_middleware(
     CORSMiddleware,
