@@ -102,7 +102,7 @@ async def add_product(
         image_url = generate_blob_url(image.filename)
 
 
-        # 🔹 Zapis produktu do Cosmos DB
+        # 🔹 Zapis produktu do Cosmos DB 
         product = {
             "name": name,
             "description": description,
