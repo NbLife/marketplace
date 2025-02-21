@@ -21,7 +21,7 @@ APP_ENV = os.getenv("APP_ENV", "development")
 
 # 🔹 Połączenie z Cosmos DB (MongoDB API)
 try:
-    client = MongoClient(COSMOS_DB_URL, tls=True, tlsAllowInvalidCertificates=True)
+    client = MongoClient(COSMOS_DB_URL, tls=True, tlsAllowInvalidCertificates=False, retryWrites=False, connectTimeoutMS=3000)
     db = client.marketplace
     collection = db.products
     print("✅ Połączono z Cosmos DB (MongoDB API)")
@@ -131,7 +131,8 @@ logging.basicConfig(level=logging.ERROR)
 def get_products():
     try:
         products = list(collection.find({}, {"_id": 1, "name": 1, "description": 1, "price": 1, "category": 1, "image_url": 1}))
-        return [{"id": str(p["_id"]), **p} for p in products]
+        return [{"id": str(p["_id"]), "name": p["name"], "description": p["description"], "price": p["price"], "category": p["category"], "image_url": p["image_url"]} for p in products]
     except Exception as e:
         logging.error(f"Błąd pobierania produktów: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Błąd pobierania produktów: {str(e)}")
+    
