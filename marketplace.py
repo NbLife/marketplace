@@ -99,7 +99,7 @@ async def add_product(
             return f"https://{AZURE_STORAGE_ACCOUNT_NAME}.blob.core.windows.net/{CONTAINER_NAME}/{encoded_filename}"
 
         # Przykład użycia w funkcji dodawania produktu:
-        image_url = generate_blob_url(image.filename) 
+        image_url = generate_blob_url(image.filename)
 
 
         # 🔹 Zapis produktu do Cosmos DB
