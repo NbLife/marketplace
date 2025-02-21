@@ -6,43 +6,39 @@ from azure.storage.blob import BlobServiceClient
 from bson import ObjectId
 from dotenv import load_dotenv
 
+# Wczytaj zmienne środowiskowe z pliku .env (tylko dla lokalnych testów)
+load_dotenv()
+
 app = FastAPI()
 
-from marketplace import app  # Import aplikacji z pliku marketplace.py
-
-
-
 # 🔹 Pobranie Connection String do Cosmos DB (MongoDB API) i Azure Blob Storage
-COSMOS_DB_URL = os.getenv("COSMOS_DB_URL")  # Używamy poprawnego connection stringa dla MongoDB API
-AZURE_BLOB_CONNECTION_STRING = os.getenv("AZURE_BLOB_STORAGE_CONNECTION_STRING")
-AZURE_STORAGE_ACCOUNT_NAME = os.getenv("AZURE_STORAGE_ACCOUNT_NAME")  
+COSMOS_DB_URL = os.getenv("AZURE_COSMOS_LISTCONNECTIONSTRINGURL")  # Zmieniona zmienna
+AZURE_BLOB_CONNECTION_STRING = os.getenv("AZURE_BLOB_CONNECTION_STRING")
+AZURE_STORAGE_ACCOUNT_NAME = os.getenv("AZURE_STORAGE_ACCOUNT_NAME")
 CONTAINER_NAME = "product-images"
-
-
 SECRET_KEY = os.getenv("SECRET_KEY")
-AZURE_CLIENT_SECRET = os.getenv("AZURE_CLIENT_SECRET")
-
+APP_ENV = os.getenv("APP_ENV", "development")
 
 # 🔹 Połączenie z Cosmos DB (MongoDB API)
 try:
     client = MongoClient(COSMOS_DB_URL)
     db = client.marketplace
     collection = db.products
-    print("Połączono z Cosmos DB (MongoDB API)")
+    print("✅ Połączono z Cosmos DB (MongoDB API)")
 except Exception as e:
-    print(f"Błąd połączenia z Cosmos DB: {e}")
+    print(f"❌ Błąd połączenia z Cosmos DB: {e}")
 
 # 🔹 Połączenie z Azure Blob Storage
 try:
     blob_service_client = BlobServiceClient.from_connection_string(AZURE_BLOB_CONNECTION_STRING)
-    print("Połączono z Azure Blob Storage")
+    print("✅ Połączono z Azure Blob Storage")
 except Exception as e:
-    print(f"Błąd połączenia z Blob Storage: {e}")
+    print(f"❌ Błąd połączenia z Blob Storage: {e}")
 
 # 🔹 Obsługa CORS dla frontendu
 origins = [
     "https://orange-ocean-095b25503.4.azurestaticapps.net",
-    "https://my-backend-fastapi.azurewebsites.net"
+    "https://my-backend-fastapi-hffeg4hcchcddhac.westeurope-01.azurewebsites.net"
 ]
 app.add_middleware(
     CORSMiddleware,
@@ -51,6 +47,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.get("/")
+def read_root():
+    return {"message": "Backend działa!", "env": APP_ENV}
 
 @app.get("/products")
 def get_products():
@@ -106,7 +106,18 @@ def delete_product(product_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Błąd usuwania produktu: {str(e)}")
 
+@app.get("/debug/env")
+def debug_env():
+    """ Debugowanie zmiennych środowiskowych """
+    return {
+        "COSMOS_DB_URL": os.getenv("AZURE_COSMOS_LISTCONNECTIONSTRINGURL"),
+        "AZURE_BLOB_CONNECTION_STRING": os.getenv("AZURE_BLOB_CONNECTION_STRING"),
+        "PORT": os.getenv("PORT"),
+        "WEBSITES_PORT": os.getenv("WEBSITES_PORT"),
+        "APP_ENV": os.getenv("APP_ENV")
+    }
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
-
+    port = int(os.getenv("PORT", 8000))  # Pobiera port od Azure, domyślnie 8000
+    uvicorn.run(app, host="0.0.0.0", port=port)
