@@ -12,7 +12,7 @@ load_dotenv()
 app = FastAPI()
 
 # 🔹 Pobranie Connection String do Cosmos DB (MongoDB API) i Azure Blob Storage
-COSMOS_DB_URL = os.getenv("AZURE_COSMOS_LISTCONNECTIONSTRINGURL")  # Zmieniona zmienna
+COSMOS_DB_URL = os.getenv("COSMOS_DB_URL")  # Zmieniona zmienna
 AZURE_BLOB_CONNECTION_STRING = os.getenv("AZURE_BLOB_CONNECTION_STRING")
 AZURE_STORAGE_ACCOUNT_NAME = os.getenv("AZURE_STORAGE_ACCOUNT_NAME")
 CONTAINER_NAME = "product-images"
