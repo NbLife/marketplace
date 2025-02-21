@@ -21,7 +21,7 @@ APP_ENV = os.getenv("APP_ENV", "development")
 
 # 🔹 Połączenie z Cosmos DB (MongoDB API)
 try:
-    client = MongoClient(COSMOS_DB_URL)
+    client = MongoClient(COSMOS_DB_URL, tls=True, tlsAllowInvalidCertificates=True)
     db = client.marketplace
     collection = db.products
     print("✅ Połączono z Cosmos DB (MongoDB API)")
@@ -110,7 +110,7 @@ def delete_product(product_id: str):
 def debug_env():
     """ Debugowanie zmiennych środowiskowych """
     return {
-        "COSMOS_DB_URL": os.getenv("AZURE_COSMOS_LISTCONNECTIONSTRINGURL"),
+        "COSMOS_DB_URL": os.getenv("COSMOS_DB_URL"),
         "AZURE_BLOB_CONNECTION_STRING": os.getenv("AZURE_BLOB_CONNECTION_STRING"),
         "PORT": os.getenv("PORT"),
         "WEBSITES_PORT": os.getenv("WEBSITES_PORT"),
@@ -121,3 +121,17 @@ if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))  # Pobiera port od Azure, domyślnie 8000
     uvicorn.run(app, host="0.0.0.0", port=port)
+
+import logging
+
+# Konfiguracja logowania błędów
+logging.basicConfig(level=logging.ERROR)
+
+@app.get("/products")
+def get_products():
+    try:
+        products = list(collection.find({}, {"_id": 1, "name": 1, "description": 1, "price": 1, "category": 1, "image_url": 1}))
+        return [{"id": str(p["_id"]), **p} for p in products]
+    except Exception as e:
+        logging.error(f"Błąd pobierania produktów: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Błąd pobierania produktów: {str(e)}")
