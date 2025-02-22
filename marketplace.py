@@ -1,45 +1,33 @@
 import os
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, Form
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
+from passlib.context import CryptContext
 from pymongo import MongoClient
 from azure.storage.blob import BlobServiceClient
 from bson import ObjectId
+from datetime import datetime, timedelta
+from jose import JWTError, jwt
 from dotenv import load_dotenv
-import logging
 
-# Konfiguracja logowania błędów
-logging.basicConfig(level=logging.ERROR)
- 
-# Wczytaj zmienne środowiskowe z pliku .env (tylko dla lokalnych testów)
+# Konfiguracja
 load_dotenv()
-
 app = FastAPI()
+SECRET_KEY = os.getenv("SECRET_KEY", "supersecret")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-# 🔹 Pobranie Connection String do Cosmos DB (MongoDB API) i Azure Blob Storage
-COSMOS_DB_URL = os.getenv("COSMOS_DB_URL")  # Zmieniona zmienna
-AZURE_BLOB_CONNECTION_STRING = os.getenv("AZURE_BLOB_CONNECTION_STRING")
-AZURE_STORAGE_ACCOUNT_NAME = os.getenv("AZURE_STORAGE_ACCOUNT_NAME")
+# Połączenie z MongoDB
+client = MongoClient(os.getenv("COSMOS_DB_URL"))
+db = client.marketplace
+users_collection = db.users
+products_collection = db.products
+
+# Połączenie z Azure Blob Storage
+blob_service_client = BlobServiceClient.from_connection_string(os.getenv("AZURE_BLOB_CONNECTION_STRING"))
 CONTAINER_NAME = "product-images"
-SECRET_KEY = os.getenv("SECRET_KEY")
-APP_ENV = os.getenv("APP_ENV", "development")
 
-# 🔹 Połączenie z Cosmos DB (MongoDB API)
-try:
-    client = MongoClient(COSMOS_DB_URL, tls=True, tlsAllowInvalidCertificates=False, retryWrites=False, connectTimeoutMS=3000)
-    db = client.marketplace
-    collection = db.products
-    print("✅ Połączono z Cosmos DB (MongoDB API)")
-except Exception as e:
-    print(f"❌ Błąd połączenia z Cosmos DB: {e}")
-
-# 🔹 Połączenie z Azure Blob Storage
-try:
-    blob_service_client = BlobServiceClient.from_connection_string(AZURE_BLOB_CONNECTION_STRING)
-    print("✅ Połączono z Azure Blob Storage")
-except Exception as e:
-    print(f"❌ Błąd połączenia z Blob Storage: {e}")
-
-# 🔹 Obsługa CORS dla frontendu
+# Obsługa CORS
 origins = [
     "https://orange-ocean-095b25503.4.azurestaticapps.net",
     "https://my-backend-fastapi-hffeg4hcchcddhac.westeurope-01.azurewebsites.net"
@@ -52,96 +40,67 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/")
-def read_root():
-    return {"message": "Backend działa!", "env": APP_ENV}
+# Obsługa haseł
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
+
+def hash_password(password: str):
+    return pwd_context.hash(password)
+
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
+
+def create_access_token(data: dict, expires_delta: timedelta):
+    to_encode = data.copy()
+    expire = datetime.utcnow() + expires_delta
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+@app.post("/signup")
+def signup(username: str = Form(...), password: str = Form(...)):
+    if users_collection.find_one({"username": username}):
+        raise HTTPException(status_code=400, detail="Użytkownik już istnieje")
+    users_collection.insert_one({"username": username, "password": hash_password(password)})
+    return {"message": "Rejestracja zakończona sukcesem"}
+
+@app.post("/login")
+def login(form_data: OAuth2PasswordRequestForm = Depends()):
+    user = users_collection.find_one({"username": form_data.username})
+    if not user or not verify_password(form_data.password, user["password"]):
+        raise HTTPException(status_code=401, detail="Nieprawidłowe dane logowania")
+    access_token = create_access_token({"sub": user["username"]}, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    return {"access_token": access_token, "token_type": "bearer"}
+
+@app.get("/users/me")
+def read_users_me(token: str = Depends(oauth2_scheme)):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise HTTPException(status_code=401, detail="Nieprawidłowy token")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Nieprawidłowy token")
+    return {"username": username}
+
+@app.post("/add_product")
+async def add_product(
+    name: str = Form(...), description: str = Form(...), price: float = Form(...),
+    category: str = Form(...), image: UploadFile = File(...)):
+    blob_client = blob_service_client.get_blob_client(container=CONTAINER_NAME, blob=image.filename)
+    blob_client.upload_blob(image.file, overwrite=True)
+    image_url = f"https://{blob_client.account_name}.blob.core.windows.net/{CONTAINER_NAME}/{image.filename}"
+    product = {"name": name, "description": description, "price": price, "category": category, "image_url": image_url}
+    inserted = products_collection.insert_one(product)
+    return {"message": "Produkt dodany", "id": str(inserted.inserted_id)}
 
 @app.get("/products")
 def get_products():
-    try:
-        products = list(collection.find({}, {"_id": 1, "name": 1, "description": 1, "price": 1, "category": 1, "image_url": 1}))
-        return [{"id": str(p["_id"]), "name": p["name"], "description": p["description"], "price": p["price"], "category": p["category"], "image_url": p["image_url"]} for p in products]
-    except Exception as e:
-        logging.error(f"Błąd pobierania produktów: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Błąd pobierania produktów: {str(e)}")
-    
-@app.post("/add_product")
-async def add_product(
-    name: str = Form(...),
-    description: str = Form(...),
-    price: float = Form(...),
-    category: str = Form(...),
-    image: UploadFile = File(...)
-):
-    """ Dodaje nowy produkt do Cosmos DB i Azure Blob Storage """
-    if not name or not description or not price or not category or not image:
-        raise HTTPException(status_code=400, detail="Wszystkie pola są wymagane!")
-
-    try:
-        # 🔹 Przesyłanie pliku do Azure Blob Storage
-        blob_client = blob_service_client.get_blob_client(container=CONTAINER_NAME, blob=image.filename)
-        blob_client.upload_blob(image.file, overwrite=True)
-
-        # 🔹 Tworzenie URL do pobrania obrazu z Azure Blob Storage
-        from urllib.parse import quote
-
-        encoded_filename = quote(image.filename)
-        image_url = f"https://{AZURE_STORAGE_ACCOUNT_NAME}.blob.core.windows.net/{CONTAINER_NAME}/{encoded_filename}"
-        
-        """from urllib.parse import quote
-       
-
-        AZURE_STORAGE_ACCOUNT_NAME = os.getenv("AZURE_STORAGE_ACCOUNT_NAME", "mymarketplaceblob")  # Ustaw wartość domyślną
-        CONTAINER_NAME = os.getenv("AZURE_BLOB_CONTAINER_NAME", "product-images")  # Sprawdź, czy to właściwy kontener
-
-        def generate_blob_url(filename):
-            encoded_filename = quote(filename)
-            return f"https://{AZURE_STORAGE_ACCOUNT_NAME}.blob.core.windows.net/{CONTAINER_NAME}/{encoded_filename}"
-
-            # Przykład użycia w funkcji dodawania produktu:
-             image_url = generate_blob_url(image.filename)"""
-
-
-        # 🔹 Zapis produktu do Cosmos DB
-        product = {
-            "name": name,
-            "description": description,
-            "price": price,
-            "category": category,
-            "image_url": image_url
-        }
-        inserted = collection.insert_one(product)
-        return {"message": "Produkt dodany!", "id": str(inserted.inserted_id)}
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Błąd dodawania produktu: {str(e)}")
+    products = list(products_collection.find({}, {"_id": 1, "name": 1, "description": 1, "price": 1, "category": 1, "image_url": 1}))
+    return [{"id": str(p["_id"]), "name": p["name"], "description": p["description"], "price": p["price"], "category": p["category"], "image_url": p["image_url"]} for p in products]
 
 @app.delete("/delete_product/{product_id}")
 def delete_product(product_id: str):
-    """ Usuwa produkt z Cosmos DB """
-    try:
-        result = collection.delete_one({"_id": ObjectId(product_id)})
-        if result.deleted_count == 0:
-            raise HTTPException(status_code=404, detail="Produkt nie został znaleziony")
-        return {"message": "Produkt usunięty"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Błąd usuwania produktu: {str(e)}")
-
-@app.get("/debug/env")
-def debug_env():
-    """ Debugowanie zmiennych środowiskowych """
-    return {
-        "COSMOS_DB_URL": os.getenv("COSMOS_DB_URL"),
-        "AZURE_BLOB_CONNECTION_STRING": os.getenv("AZURE_BLOB_CONNECTION_STRING"),
-        "PORT": os.getenv("PORT"),
-        "WEBSITES_PORT": os.getenv("WEBSITES_PORT"),
-        "APP_ENV": os.getenv("APP_ENV")
-    }
-
-if __name__ == "__main__":
-    import uvicorn
-    port = int(os.getenv("PORT", 8000))  # Pobiera port od Azure, domyślnie 8000
-    uvicorn.run(app, host="0.0.0.0", port=port)
-
-
-
+    result = products_collection.delete_one({"_id": ObjectId(product_id)})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Produkt nie znaleziony")
+    return {"message": "Produkt usunięty"}
