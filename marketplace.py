@@ -87,6 +87,20 @@ async def add_product(
 
         encoded_filename = quote(image.filename)
         image_url = f"https://{AZURE_STORAGE_ACCOUNT_NAME}.blob.core.windows.net/{CONTAINER_NAME}/{encoded_filename}"
+        
+        """from urllib.parse import quote
+       
+
+        AZURE_STORAGE_ACCOUNT_NAME = os.getenv("AZURE_STORAGE_ACCOUNT_NAME", "mymarketplaceblob")  # Ustaw wartość domyślną
+        CONTAINER_NAME = os.getenv("AZURE_BLOB_CONTAINER_NAME", "product-images")  # Sprawdź, czy to właściwy kontener
+
+        def generate_blob_url(filename):
+            encoded_filename = quote(filename)
+            return f"https://{AZURE_STORAGE_ACCOUNT_NAME}.blob.core.windows.net/{CONTAINER_NAME}/{encoded_filename}"
+
+            # Przykład użycia w funkcji dodawania produktu:
+             image_url = generate_blob_url(image.filename)"""
+
 
         # 🔹 Zapis produktu do Cosmos DB
         product = {
