@@ -9,7 +9,7 @@ import logging
 
 # Konfiguracja logowania błędów
 logging.basicConfig(level=logging.ERROR)
-
+ 
 # Wczytaj zmienne środowiskowe z pliku .env (tylko dla lokalnych testów)
 load_dotenv()
 
