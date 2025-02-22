@@ -20,7 +20,7 @@ load_dotenv()
 app = FastAPI()
 
 # 🔹 Konfiguracja aplikacji
-SECRET_KEY = os.getenv("SECRET_KEY", "supersecretkey")  # Powinien być ustawiony w Azure Configuration lub GitHub Secrets
+SECRET_KEY = os.getenv("SECRET_KEY")  # Powinien być ustawiony w Azure Configuration lub GitHub Secrets
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
@@ -41,7 +41,7 @@ blob_service_client = BlobServiceClient.from_connection_string(AZURE_BLOB_CONNEC
 # 🔹 Obsługa CORS dla frontendu
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Możesz zmienić na konkretne domeny
+    allow_origins=["https://orange-ocean-095b25503.4.azurestaticapps.net"],  # Adres Twojego frontendu
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
