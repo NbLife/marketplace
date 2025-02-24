@@ -3,7 +3,7 @@ import jwt
 import bcrypt
 import logging
 from datetime import datetime, timedelta
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pymongo import MongoClient
 from azure.storage.blob import BlobServiceClient
@@ -11,44 +11,51 @@ from bson import ObjectId
 from dotenv import load_dotenv
 from pydantic import BaseModel
 
-# Konfiguracja logowania błędów
+# ✅ Konfiguracja logowania błędów
 logging.basicConfig(level=logging.ERROR)
 
-# Wczytaj zmienne środowiskowe
+# ✅ Wczytaj zmienne środowiskowe
 load_dotenv()
 
 app = FastAPI()
 
-# 🔹 Konfiguracja aplikacji
-SECRET_KEY = os.getenv("SECRET_KEY")  # Powinien być ustawiony w Azure Configuration lub GitHub Secrets
+# ✅ Konfiguracja aplikacji
+SECRET_KEY = os.getenv("SECRET_KEY", "supersecretkey")  # Powinien być ustawiony w Azure Configuration lub GitHub Secrets
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-# 🔹 Połączenie z bazą Cosmos DB (MongoDB API)
+# ✅ Połączenie z bazą Cosmos DB (MongoDB API)
 COSMOS_DB_URL = os.getenv("COSMOS_DB_URL")
 client = MongoClient(COSMOS_DB_URL, tls=True, retryWrites=False)
 db = client.marketplace
 users_collection = db.users
 products_collection = db.products
 
-# 🔹 Połączenie z Azure Blob Storage
+# ✅ Połączenie z Azure Blob Storage
 AZURE_BLOB_CONNECTION_STRING = os.getenv("AZURE_BLOB_CONNECTION_STRING")
 AZURE_STORAGE_ACCOUNT_NAME = os.getenv("AZURE_STORAGE_ACCOUNT_NAME")
 CONTAINER_NAME = "product-images"
 
 blob_service_client = BlobServiceClient.from_connection_string(AZURE_BLOB_CONNECTION_STRING)
 
-# 🔹 Obsługa CORS dla frontendu
+# ✅ Pełna konfiguracja CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://my-backend-fastapi-hffeg4hcchcddhac.westeurope-01.azurewebsites.net"],  # Adres Twojego backendu
     allow_origins=["https://orange-ocean-095b25503.4.azurestaticapps.net"],  # Adres Twojego frontendu
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# 🔹 Modele Pydantic
+# ✅ Obsługa preflight requests (OPTIONS)
+@app.options("/{full_path:path}")
+def preflight_request(full_path: str, response: Response):
+    response.headers["Access-Control-Allow-Origin"] = "https://orange-ocean-095b25503.4.azurestaticapps.net"
+    response.headers["Access-Control-Allow-Methods"] = "POST, GET, DELETE, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+    return response
+
+# ✅ Modele Pydantic
 class UserSignup(BaseModel):
     username: str
     password: str
@@ -57,14 +64,14 @@ class UserLogin(BaseModel):
     username: str
     password: str
 
-# 🔹 Funkcje pomocnicze
+# ✅ Funkcje pomocnicze
 def create_access_token(data: dict, expires_delta: timedelta = None):
     to_encode = data.copy()
     expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-# 🔹 Endpointy użytkowników
+# ✅ Endpointy użytkowników
 @app.post("/signup")
 def signup(user: UserSignup):
     if users_collection.find_one({"username": user.username}):
@@ -84,7 +91,7 @@ def login(user: UserLogin):
     token = create_access_token({"sub": user.username})
     return {"access_token": token, "token_type": "bearer"}
 
-# 🔹 Endpointy produktów
+# ✅ Endpointy produktów
 @app.get("/products")
 def get_products():
     try:
@@ -104,14 +111,14 @@ async def add_product(
 ):
     """ Dodaje nowy produkt do Cosmos DB i Azure Blob Storage """
     try:
-        # 🔹 Przesyłanie pliku do Azure Blob Storage
+        # ✅ Przesyłanie pliku do Azure Blob Storage
         blob_client = blob_service_client.get_blob_client(container=CONTAINER_NAME, blob=image.filename)
         blob_client.upload_blob(image.file, overwrite=True)
 
-        # 🔹 Tworzenie URL do pobrania obrazu z Azure Blob Storage
+        # ✅ Tworzenie URL do pobrania obrazu z Azure Blob Storage
         image_url = f"https://{AZURE_STORAGE_ACCOUNT_NAME}.blob.core.windows.net/{CONTAINER_NAME}/{image.filename}"
 
-        # 🔹 Zapis produktu do Cosmos DB
+        # ✅ Zapis produktu do Cosmos DB
         product = {
             "name": name,
             "description": description,
@@ -135,7 +142,7 @@ def delete_product(product_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Błąd usuwania produktu: {str(e)}")
 
-# 🔹 Debugowanie zmiennych środowiskowych
+# ✅ Debugowanie zmiennych środowiskowych
 @app.get("/debug/env")
 def debug_env():
     return {
@@ -146,7 +153,7 @@ def debug_env():
         "APP_ENV": os.getenv("APP_ENV")
     }
 
-# 🔹 Uruchomienie aplikacji
+# ✅ Uruchomienie aplikacji
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))  # Pobiera port od Azure, domyślnie 8000
