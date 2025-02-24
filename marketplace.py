@@ -41,6 +41,7 @@ blob_service_client = BlobServiceClient.from_connection_string(AZURE_BLOB_CONNEC
 # 🔹 Obsługa CORS dla frontendu
 app.add_middleware(
     CORSMiddleware,
+    allow_origins=["https://my-backend-fastapi-hffeg4hcchcddhac.westeurope-01.azurewebsites.net"],  # Adres Twojego backendu
     allow_origins=["https://orange-ocean-095b25503.4.azurestaticapps.net"],  # Adres Twojego frontendu
     allow_credentials=True,
     allow_methods=["*"],
