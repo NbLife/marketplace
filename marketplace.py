@@ -20,7 +20,7 @@ load_dotenv()
 app = FastAPI()
 
 # 🔹 Konfiguracja aplikacji
-SECRET_KEY = os.getenv("SECRET_KEY")
+SECRET_KEY = os.getenv("SECRET_KEY") 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
