@@ -1,67 +1,102 @@
 import os
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+import jwt
+import bcrypt
+import logging
+from datetime import datetime, timedelta
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pymongo import MongoClient
 from azure.storage.blob import BlobServiceClient
 from bson import ObjectId
 from dotenv import load_dotenv
-import logging
+from pydantic import BaseModel
 
 # 🔹 Konfiguracja logowania błędów
 logging.basicConfig(level=logging.ERROR)
 
-# 🔹 Wczytaj zmienne środowiskowe z pliku .env
+# 🔹 Wczytaj zmienne środowiskowe
 load_dotenv()
 
 app = FastAPI()
 
-# 🔹 Pobranie Connection String do Cosmos DB (MongoDB API) i Azure Blob Storage
+# 🔹 Konfiguracja aplikacji
+SECRET_KEY = os.getenv("SECRET_KEY")  # Powinien być ustawiony w Azure Configuration lub GitHub Secrets
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+# 🔹 Połączenie z bazą Cosmos DB (MongoDB API)
 COSMOS_DB_URL = os.getenv("COSMOS_DB_URL")
+client = MongoClient(COSMOS_DB_URL, tls=True, retryWrites=False)
+db = client.marketplace
+users_collection = db.users
+products_collection = db.products
+
+# 🔹 Połączenie z Azure Blob Storage
 AZURE_BLOB_CONNECTION_STRING = os.getenv("AZURE_BLOB_CONNECTION_STRING")
 AZURE_STORAGE_ACCOUNT_NAME = os.getenv("AZURE_STORAGE_ACCOUNT_NAME")
 CONTAINER_NAME = "product-images"
-SECRET_KEY = os.getenv("SECRET_KEY")
-APP_ENV = os.getenv("APP_ENV", "development")
 
-# 🔹 Połączenie z Cosmos DB (MongoDB API)
-try:
-    client = MongoClient(COSMOS_DB_URL, tls=True, tlsAllowInvalidCertificates=False, retryWrites=False, connectTimeoutMS=3000)
-    db = client.marketplace
-    collection = db.products
-    print("✅ Połączono z Cosmos DB (MongoDB API)")
-except Exception as e:
-    print(f"❌ Błąd połączenia z Cosmos DB: {e}")
+blob_service_client = BlobServiceClient.from_connection_string(AZURE_BLOB_CONNECTION_STRING)
 
-# 🔹 Połączenie z Azure Blob Storage
-try:
-    blob_service_client = BlobServiceClient.from_connection_string(AZURE_BLOB_CONNECTION_STRING)
-    print("✅ Połączono z Azure Blob Storage")
-except Exception as e:
-    print(f"❌ Błąd połączenia z Blob Storage: {e}")
-
-# 🔹 Obsługa CORS dla frontendu i backendu
-origins = [
-    "https://orange-ocean-095b25503.4.azurestaticapps.net",  # Frontend
-    "https://my-backend-fastapi-hffeg4hcchcddhac.westeurope-01.azurewebsites.net"  # Backend
-]
-
+# 🔹 Pełna konfiguracja CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["https://orange-ocean-095b25503.4.azurestaticapps.net"],  # Adres frontendu
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-@app.get("/")
-def read_root():
-    return {"message": "Backend działa!", "env": APP_ENV}
+# 🔹 Obsługa preflight requests (OPTIONS)
+@app.options("/{full_path:path}")
+def preflight_request(full_path: str, response: Response):
+    response.headers["Access-Control-Allow-Origin"] = "https://orange-ocean-095b25503.4.azurestaticapps.net"
+    response.headers["Access-Control-Allow-Methods"] = "POST, GET, DELETE, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+    return response
 
+# 🔹 Modele Pydantic
+class UserSignup(BaseModel):
+    username: str
+    password: str
+
+class UserLogin(BaseModel):
+    username: str
+    password: str
+
+# 🔹 Funkcje pomocnicze
+def create_access_token(data: dict, expires_delta: timedelta = None):
+    to_encode = data.copy()
+    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+# 🔹 Endpointy użytkowników
+@app.post("/signup")
+def signup(user: UserSignup):
+    if users_collection.find_one({"username": user.username}):
+        raise HTTPException(status_code=400, detail="Użytkownik już istnieje")
+
+    hashed_password = bcrypt.hashpw(user.password.encode(), bcrypt.gensalt())
+    users_collection.insert_one({"username": user.username, "password": hashed_password.decode()})
+    
+    return {"message": "Rejestracja zakończona sukcesem"}
+
+@app.post("/login")
+def login(user: UserLogin):
+    db_user = users_collection.find_one({"username": user.username})
+    if not db_user or not bcrypt.checkpw(user.password.encode(), db_user["password"].encode()):
+        raise HTTPException(status_code=400, detail="Nieprawidłowe dane logowania")
+
+    token = create_access_token({"sub": user.username})
+    return {"access_token": token, "token_type": "bearer"}
+
+# 🔹 Endpointy produktów
 @app.get("/products")
 def get_products():
     """ Pobiera wszystkie produkty z bazy danych """
     try:
-        products = list(collection.find({}, {"_id": 1, "name": 1, "description": 1, "price": 1, "category": 1, "image_url": 1}))
+        products = list(products_collection.find({}, {"_id": 1, "name": 1, "description": 1, "price": 1, "category": 1, "image_url": 1}))
         return [{"id": str(p["_id"]), **p} for p in products]
     except Exception as e:
         logging.error(f"Błąd pobierania produktów: {str(e)}")
@@ -92,7 +127,7 @@ async def add_product(
             "category": category,
             "image_url": image_url
         }
-        inserted = collection.insert_one(product)
+        inserted = products_collection.insert_one(product)
         return {"message": "Produkt dodany!", "id": str(inserted.inserted_id)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Błąd dodawania produktu: {str(e)}")
@@ -101,9 +136,9 @@ async def add_product(
 def delete_product(product_id: str):
     """ Usuwa produkt z Cosmos DB """
     try:
-        result = collection.delete_one({"_id": ObjectId(product_id)})
+        result = products_collection.delete_one({"_id": ObjectId(product_id)})
         if result.deleted_count == 0:
-            raise HTTPException(status_code=404, detail="Produkt nie został znaleziony")
+            raise HTTPException(status_code=404, detail="Produkt nie znaleziony")
         return {"message": "Produkt usunięty"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Błąd usuwania produktu: {str(e)}")
