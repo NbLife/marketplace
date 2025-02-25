@@ -16,11 +16,6 @@
             background: #007BFF;
             color: white;
             padding: 10px;
-            text-align: center;
-        }
-        nav {
-            padding: 10px;
-            background: #ddd;
         }
         .modal {
             position: fixed;
@@ -33,33 +28,53 @@
             box-shadow: 0px 0px 10px rgba(0,0,0,0.3);
             display: none;
         }
-        .modal input {
+        .modal input, .modal button {
             width: 100%;
-            padding: 8px;
+            padding: 10px;
             margin: 5px 0;
         }
         .modal button {
-            width: 100%;
             background: #007BFF;
             color: white;
             border: none;
-            padding: 10px;
             cursor: pointer;
         }
         .modal button:hover {
             background: #0056b3;
         }
+        .products-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            padding: 20px;
+        }
         .product {
             background: white;
             padding: 15px;
             margin: 10px;
-            width: 250px;
+            width: 300px;
             text-align: center;
-            border-radius: 5px;
-            display: inline-block;
-            box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            box-shadow: 2px 2px 10px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
         }
-        .hidden { display: none; }
+        .product:hover {
+            transform: scale(1.05);
+        }
+        .product img {
+            width: 100%;
+            border-radius: 8px;
+        }
+        .delete-button {
+            background: red;
+            color: white;
+            border: none;
+            padding: 8px;
+            cursor: pointer;
+        }
+        .delete-button:hover {
+            background: darkred;
+        }
     </style>
 </head>
 <body>
@@ -70,9 +85,9 @@
         <button onclick="showAddProductForm()">Add Product</button>
     </header>
 
-    <div id="productsContainer"></div>
+    <div id="productsContainer" class="products-container"></div>
 
-    <!-- Formularze logowania i rejestracji -->
+    <!-- Formularze -->
     <div id="loginForm" class="modal">
         <h2>Login</h2>
         <input type="text" id="loginUsername" placeholder="Username">
@@ -117,7 +132,7 @@
                 body: JSON.stringify({ username, password })
             });
 
-            alert(await response.json().message);
+            alert((await response.json()).message);
         }
 
         async function login() {
@@ -144,11 +159,11 @@
             products.forEach(product => {
                 container.innerHTML += `
                     <div class="product">
+                        <img src="${product.image_url}" alt="${product.name}">
                         <h3>${product.name}</h3>
                         <p>${product.description}</p>
                         <p><strong>${product.price} PLN</strong></p>
-                        <img src="${product.image_url}" width="150">
-                        <button onclick="deleteProduct('${product.id}')">Delete</button>
+                        <button class="delete-button" onclick="deleteProduct('${product.id}')">Delete</button>
                     </div>`;
             });
         }
