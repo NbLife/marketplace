@@ -132,6 +132,32 @@
         </select>
     </div>
     
+    <div class="modal" id="loginForm">
+        <h2>Login</h2>
+        <input type="text" id="loginUsername" placeholder="Username">
+        <input type="password" id="loginPassword" placeholder="Password">
+        <button onclick="login()">Login</button>
+        <button onclick="closeForm('loginForm')">Close</button>
+    </div>
+    
+    <div class="modal" id="signupForm">
+        <h2>Sign Up</h2>
+        <input type="text" id="signupUsername" placeholder="Username">
+        <input type="password" id="signupPassword" placeholder="Password">
+        <button onclick="signup()">Sign Up</button>
+        <button onclick="closeForm('signupForm')">Close</button>
+    </div>
+    
+    <div class="modal" id="addProductForm">
+        <h2>Add Product</h2>
+        <input type="text" id="productName" placeholder="Product Name">
+        <input type="text" id="productDescription" placeholder="Description">
+        <input type="number" id="productPrice" placeholder="Price">
+        <input type="file" id="productImage">
+        <button onclick="addProduct()">Submit</button>
+        <button onclick="closeForm('addProductForm')">Close</button>
+    </div>
+    
     <div id="productsContainer" class="products-container"></div>
     
     <footer class="footer">© 2025 Marketplace. Contact: support@marketplace.com</footer>
