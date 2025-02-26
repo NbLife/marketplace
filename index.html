@@ -28,16 +28,6 @@
         .language-selector {
             margin-left: 20px;
         }
-        .category-menu {
-            display: none;
-            position: absolute;
-            top: 50px;
-            right: 20px;
-            background: white;
-            box-shadow: 2px 2px 10px rgba(0,0,0,0.2);
-            padding: 10px;
-            border-radius: 5px;
-        }
         .modal {
             position: fixed;
             top: 50%;
@@ -102,7 +92,6 @@
             <option value="ua">Українська</option>
             <option value="ru">Русский</option>
         </select>
-        <div class="menu-btn" onclick="toggleMenu()">☰</div>
     </header>
     
     <div class="modal" id="loginForm">
@@ -136,10 +125,48 @@
     <footer class="footer">© 2025 Marketplace. Contact: support@marketplace.com</footer>
     
     <script>
-        function showLoginForm() { document.getElementById('loginForm').style.display = 'block'; }
-        function showSignupForm() { document.getElementById('signupForm').style.display = 'block'; }
-        function showAddProductForm() { document.getElementById('addProductForm').style.display = 'block'; }
-        function closeForm(id) { document.getElementById(id).style.display = 'none'; }
+        async function login() {
+            let username = document.getElementById("loginUsername").value;
+            let password = document.getElementById("loginPassword").value;
+            let response = await fetch("/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username, password })
+            });
+            let result = await response.json();
+            alert(result.message || "Login failed");
+        }
+        
+        async function signup() {
+            let username = document.getElementById("signupUsername").value;
+            let password = document.getElementById("signupPassword").value;
+            let response = await fetch("/signup", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username, password })
+            });
+            let result = await response.json();
+            alert(result.message || "Signup failed");
+        }
+        
+        async function addProduct() {
+            let name = document.getElementById("productName").value;
+            let description = document.getElementById("productDescription").value;
+            let price = document.getElementById("productPrice").value;
+            let image = document.getElementById("productImage").files[0];
+            let formData = new FormData();
+            formData.append("name", name);
+            formData.append("description", description);
+            formData.append("price", price);
+            formData.append("image", image);
+            
+            let response = await fetch("/add_product", {
+                method: "POST",
+                body: formData
+            });
+            let result = await response.json();
+            alert(result.message || "Error adding product");
+        }
     </script>
 </body>
 </html>
