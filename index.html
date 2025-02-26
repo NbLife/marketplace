@@ -28,6 +28,17 @@
         .language-selector {
             margin-left: 20px;
         }
+        .categories {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            background: #ddd;
+            padding: 10px;
+        }
+        .categories select {
+            padding: 10px;
+            font-size: 16px;
+        }
         .modal {
             position: fixed;
             top: 50%;
@@ -94,30 +105,31 @@
         </select>
     </header>
     
-    <div class="modal" id="loginForm">
-        <h2>Login</h2>
-        <input type="text" id="loginUsername" placeholder="Username">
-        <input type="password" id="loginPassword" placeholder="Password">
-        <button onclick="login()">Login</button>
-        <button onclick="closeForm('loginForm')">Close</button>
-    </div>
-    
-    <div class="modal" id="signupForm">
-        <h2>Sign Up</h2>
-        <input type="text" id="signupUsername" placeholder="Username">
-        <input type="password" id="signupPassword" placeholder="Password">
-        <button onclick="signup()">Sign Up</button>
-        <button onclick="closeForm('signupForm')">Close</button>
-    </div>
-    
-    <div class="modal" id="addProductForm">
-        <h2>Add Product</h2>
-        <input type="text" id="productName" placeholder="Product Name">
-        <input type="text" id="productDescription" placeholder="Description">
-        <input type="number" id="productPrice" placeholder="Price">
-        <input type="file" id="productImage">
-        <button onclick="addProduct()">Submit</button>
-        <button onclick="closeForm('addProductForm')">Close</button>
+    <div class="categories">
+        <label for="categoryFilter">Choose a category:</label>
+        <select id="categoryFilter">
+            <option value="all">All Categories</option>
+            <option value="electronics">Electronics</option>
+            <option value="clothing">Clothing</option>
+            <option value="home">Home</option>
+            <option value="books">Books</option>
+            <option value="beauty">Beauty</option>
+            <option value="sports">Sports</option>
+            <option value="toys">Toys</option>
+            <option value="automotive">Automotive</option>
+            <option value="furniture">Furniture</option>
+            <option value="jewelry">Jewelry</option>
+            <option value="handmade">Handmade</option>
+            <option value="garden">Garden</option>
+            <option value="pets">Pets</option>
+            <option value="music">Music</option>
+            <option value="movies">Movies</option>
+            <option value="gaming">Gaming</option>
+            <option value="office">Office Supplies</option>
+            <option value="groceries">Groceries</option>
+            <option value="health">Health</option>
+            <option value="baby">Baby Products</option>
+        </select>
     </div>
     
     <div id="productsContainer" class="products-container"></div>
@@ -125,47 +137,13 @@
     <footer class="footer">© 2025 Marketplace. Contact: support@marketplace.com</footer>
     
     <script>
-        async function login() {
-            let username = document.getElementById("loginUsername").value;
-            let password = document.getElementById("loginPassword").value;
-            let response = await fetch("/login", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ username, password })
-            });
-            let result = await response.json();
-            alert(result.message || "Login failed");
-        }
+        function showLoginForm() { document.getElementById('loginForm').style.display = 'block'; }
+        function showSignupForm() { document.getElementById('signupForm').style.display = 'block'; }
+        function showAddProductForm() { document.getElementById('addProductForm').style.display = 'block'; }
+        function closeForm(id) { document.getElementById(id).style.display = 'none'; }
         
-        async function signup() {
-            let username = document.getElementById("signupUsername").value;
-            let password = document.getElementById("signupPassword").value;
-            let response = await fetch("/signup", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ username, password })
-            });
-            let result = await response.json();
-            alert(result.message || "Signup failed");
-        }
-        
-        async function addProduct() {
-            let name = document.getElementById("productName").value;
-            let description = document.getElementById("productDescription").value;
-            let price = document.getElementById("productPrice").value;
-            let image = document.getElementById("productImage").files[0];
-            let formData = new FormData();
-            formData.append("name", name);
-            formData.append("description", description);
-            formData.append("price", price);
-            formData.append("image", image);
-            
-            let response = await fetch("/add_product", {
-                method: "POST",
-                body: formData
-            });
-            let result = await response.json();
-            alert(result.message || "Error adding product");
+        function changeLanguage(lang) {
+            alert("Language change feature will be implemented soon.");
         }
     </script>
 </body>
