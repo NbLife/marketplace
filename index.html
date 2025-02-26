@@ -15,36 +15,29 @@
         header {
             background: #007BFF;
             color: white;
-            padding: 10px;
-            text-align: center;
-        }
-        nav {
-            display: flex;
-            justify-content: center;
-            padding: 10px;
-            background: #ddd;
-        }
-        nav input, nav select {
-            margin: 5px;
-            padding: 5px;
-        }
-        #productsContainer {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            margin: 20px;
-        }
-        .product {
-            border: 1px solid #ddd;
-            background: white;
             padding: 15px;
-            margin: 10px;
-            width: 200px;
-            text-align: center;
-            border-radius: 5px;
-            box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
-        .hidden { display: none; }
+        .menu-btn {
+            font-size: 30px;
+            cursor: pointer;
+            margin-right: 20px;
+        }
+        .language-selector {
+            margin-left: 20px;
+        }
+        .category-menu {
+            display: none;
+            position: absolute;
+            top: 50px;
+            right: 20px;
+            background: white;
+            box-shadow: 2px 2px 10px rgba(0,0,0,0.2);
+            padding: 10px;
+            border-radius: 5px;
+        }
         .modal {
             position: fixed;
             top: 50%;
@@ -54,161 +47,129 @@
             padding: 20px;
             border-radius: 5px;
             box-shadow: 0px 0px 10px rgba(0,0,0,0.3);
+            display: none;
         }
-        .modal input, .modal select {
-            width: 100%;
-            padding: 8px;
-            margin: 5px 0;
+        .products-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            padding: 20px;
         }
-        .modal button {
+        .product {
+            background: white;
+            padding: 15px;
+            margin: 10px;
+            width: 250px;
+            border-radius: 8px;
+            box-shadow: 2px 2px 10px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+        .product:hover {
+            transform: scale(1.05);
+        }
+        .product img {
             width: 100%;
-            background: #007BFF;
+            border-radius: 8px;
+        }
+        .delete-button {
+            background: red;
             color: white;
             border: none;
-            padding: 10px;
+            padding: 8px;
             cursor: pointer;
+            margin-top: 10px;
         }
-        .modal button:hover {
-            background: #0056b3;
+        .footer {
+            background: #333;
+            color: white;
+            padding: 15px;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
         }
     </style>
 </head>
 <body>
     <header>
-        <h1>Marketplace</h1>
-        <button onclick="showLoginForm()">Login</button>
-        <button onclick="showSignupForm()">Sign Up</button>
+        <h1 id="pageTitle">Marketplace</h1>
+        <input type="text" id="search" placeholder="Search products" onkeyup="fetchProducts()">
+        <select class="language-selector" onchange="changeLanguage(this.value)">
+            <option value="en">English</option>
+            <option value="pl">Polski</option>
+            <option value="ua">Українська</option>
+            <option value="ru">Русский</option>
+        </select>
+        <div class="menu-btn" onclick="toggleMenu()">☰</div>
     </header>
     
-    <nav>
-        <input type="text" id="search" placeholder="Search products" onkeyup="fetchProducts()">
-        <select id="categoryFilter" onchange="fetchProducts()">
-            <option value="all">All Categories</option>
-            <option value="Electronics">Electronics</option>
-            <option value="Clothing">Clothing</option>
-            <option value="Home">Home</option>
-            <option value="Books">Books</option>
-            <option value="Beauty">Beauty</option>
-            <option value="Sports">Sports</option>
-            <option value="Toys">Toys</option>
-            <option value="Others">Others</option>
-        </select>
-        <button onclick="showAddProductForm()">Add Product</button>
-    </nav>
-
-    <div id="productsContainer"></div>
+    <div class="category-menu" id="categoryMenu">
+        <p id="categoriesTitle">Categories:</p>
+        <ul id="categoryList">
+            <li data-key="electronics">Electronics</li>
+            <li data-key="clothing">Clothing</li>
+            <li data-key="home">Home</li>
+            <li data-key="books">Books</li>
+            <li data-key="beauty">Beauty</li>
+            <li data-key="sports">Sports</li>
+            <li data-key="toys">Toys</li>
+            <li data-key="automotive">Automotive</li>
+            <li data-key="furniture">Furniture</li>
+            <li data-key="jewelry">Jewelry</li>
+            <li data-key="handmade">Handmade</li>
+            <li data-key="garden">Garden</li>
+            <li data-key="pets">Pets</li>
+            <li data-key="music">Music</li>
+            <li data-key="movies">Movies</li>
+            <li data-key="gaming">Gaming</li>
+            <li data-key="office">Office Supplies</li>
+            <li data-key="groceries">Groceries</li>
+            <li data-key="health">Health</li>
+            <li data-key="baby">Baby Products</li>
+        </ul>
+    </div>
     
-    <div id="loginForm" class="modal hidden">
-        <h2>Login</h2>
-        <input type="text" id="loginUsername" placeholder="Username">
-        <input type="password" id="loginPassword" placeholder="Password">
-        <button onclick="login()">Login</button>
-        <button onclick="closeForm('loginForm')">Close</button>
-    </div>
-
-    <div id="signupForm" class="modal hidden">
-        <h2>Sign Up</h2>
-        <input type="text" id="signupUsername" placeholder="Username">
-        <input type="password" id="signupPassword" placeholder="Password">
-        <button onclick="signup()">Sign Up</button>
-        <button onclick="closeForm('signupForm')">Close</button>
-    </div>
-
-    <div id="addProductForm" class="modal hidden">
-        <h2>Add Product</h2>
-        <input type="text" id="productName" placeholder="Product Name">
-        <input type="text" id="productDescription" placeholder="Description">
-        <input type="number" id="productPrice" placeholder="Price">
-        <select id="productCategory">
-            <option value="Electronics">Electronics</option>
-            <option value="Clothing">Clothing</option>
-            <option value="Home">Home</option>
-            <option value="Books">Books</option>
-            <option value="Beauty">Beauty</option>
-            <option value="Sports">Sports</option>
-            <option value="Toys">Toys</option>
-            <option value="Others">Others</option>
-        </select>
-        <input type="file" id="productImage">
-        <button onclick="addProduct()">Submit</button>
-        <button onclick="closeForm('addProductForm')">Close</button>
-    </div>
-
+    <div id="productsContainer" class="products-container"></div>
+    
+    <footer class="footer" id="footerText">© 2025 Marketplace. Contact: support@marketplace.com</footer>
+    
     <script>
         const BACKEND_URL = "https://my-backend-fastapi-hffeg4hcchcddhac.westeurope-01.azurewebsites.net";
-
-        function showLoginForm() { document.getElementById('loginForm').classList.remove('hidden'); }
-        function showSignupForm() { document.getElementById('signupForm').classList.remove('hidden'); }
-        function showAddProductForm() { document.getElementById('addProductForm').classList.remove('hidden'); }
-        function closeForm(id) { document.getElementById(id).classList.add('hidden'); }
-
+        
         async function fetchProducts() {
-            const searchQuery = document.getElementById('search').value.toLowerCase();
-            const selectedCategory = document.getElementById('categoryFilter').value;
-
             const response = await fetch(`${BACKEND_URL}/products`);
             const products = await response.json();
             const container = document.getElementById("productsContainer");
             container.innerHTML = "";
-
             products.forEach(product => {
-                if ((selectedCategory === "all" || product.category === selectedCategory) &&
-                    (product.name.toLowerCase().includes(searchQuery) || product.description.toLowerCase().includes(searchQuery))) {
-                    container.innerHTML += `
-                        <div class="product">
-                            <h3>${product.name}</h3>
-                            <p>${product.description}</p>
-                            <p><strong>${product.price} PLN</strong></p>
-                            <img src="${product.image_url}" width="150">
-                        </div>`;
-                }
+                container.innerHTML += `
+                    <div class="product">
+                        <img src="${product.image_url}" alt="${product.name}">
+                        <h3>${product.name}</h3>
+                        <p>${product.description}</p>
+                        <p><strong>${product.price} PLN</strong></p>
+                        <button class="delete-button" onclick="deleteProduct('${product.id}')">Delete</button>
+                    </div>`;
             });
         }
 
-        async function addProduct() {
-            const name = document.getElementById('productName').value;
-            const description = document.getElementById('productDescription').value;
-            const price = document.getElementById('productPrice').value;
-            const category = document.getElementById('productCategory').value;
-            const image = document.getElementById('productImage').files[0];
-
-            if (!name || !description || !price || !image) {
-                alert("All fields are required!");
-                return;
-            }
-
-            let formData = new FormData();
-            formData.append("name", name);
-            formData.append("description", description);
-            formData.append("price", price);
-            formData.append("category", category);
-            formData.append("image", image);
-
-            try {
-                let response = await fetch(`${BACKEND_URL}/add_product`, {
-                    method: "POST",
-                    body: formData
-                });
-
-                let result = await response.json();
-                alert(result.message);
-                closeForm('addProductForm');
-                fetchProducts();
-            } catch (error) {
-                console.error("Error adding product:", error);
-            }
+        function changeLanguage(lang) {
+            const translations = {
+                "en": { "title": "Marketplace", "categories": "Categories:", "footer": "© 2025 Marketplace. Contact: support@marketplace.com" },
+                "pl": { "title": "Targowisko", "categories": "Kategorie:", "footer": "© 2025 Targowisko. Kontakt: support@targowisko.com" },
+                "ua": { "title": "Ринок", "categories": "Категорії:", "footer": "© 2025 Ринок. Контакт: support@rynok.com" },
+                "ru": { "title": "Рынок", "categories": "Категории:", "footer": "© 2025 Рынок. Контакт: support@rynok.com" }
+            };
+            document.getElementById("pageTitle").innerText = translations[lang].title;
+            document.getElementById("categoriesTitle").innerText = translations[lang].categories;
+            document.getElementById("footerText").innerText = translations[lang].footer;
         }
 
+        function toggleMenu() {
+            const menu = document.getElementById("categoryMenu");
+            menu.style.display = menu.style.display === "block" ? "none" : "block";
+        }
+        
         fetchProducts();
-
-    function signup() {
-        alert("Signup feature is not implemented yet.");
-    }
-
-    function login() {
-        alert("Login feature is not implemented yet.");
-    }
-
     </script>
 </body>
 </html>
