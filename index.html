@@ -169,7 +169,7 @@
             formData.append("price", price);
             formData.append("image", image);
             
-            let response = await fetch("/add_product", {
+            let response = await fetch("https://my-backend-fastapi-hffeg4hcchcddhac.westeurope-01.azurewebsites.net/add_product", {
                 method: "POST",
                 body: formData
             });
