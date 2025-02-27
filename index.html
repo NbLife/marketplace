@@ -187,9 +187,12 @@
             formData.append("category", category);
             formData.append("image", image);
 
+            const token = localStorage.getItem("token");  // Pobierz token JWT
+
             try {
                 let response = await fetch(`${BACKEND_URL}/add_product`, {
                     method: "POST",
+                    headers: { "Authorization": `Bearer ${token}` },  // 👈 Wysyłaj token w nagłówku
                     body: formData
                 });
 
@@ -199,8 +202,10 @@
                 fetchProducts();
             } catch (error) {
                 console.error("Error adding product:", error);
+                alert("Error adding product. Please try again.");
             }
         }
+
 
         fetchProducts();
 
@@ -287,18 +292,20 @@
             updateUI();
         }
 
-        function updateUI() {
-            const token = localStorage.getItem("token");
-            if (token) {
-                document.getElementById('logoutButton').style.display = "block";
-                document.getElementById('loginForm').style.display = "none";
-                document.getElementById('signupForm').style.display = "none";
-            } else {
-                document.getElementById('logoutButton').style.display = "none";
-            }
-        }
 
-        document.addEventListener("DOMContentLoaded", updateUI);
+        function updateUI() {
+    const token = localStorage.getItem("token");
+    if (token) {
+        document.getElementById('logoutButton').style.display = "block";
+        document.getElementById('loginForm').classList.add('hidden');
+        document.getElementById('signupForm').classList.add('hidden');
+    } else {
+        document.getElementById('logoutButton').style.display = "none";
+    }
+}
+
+document.addEventListener("DOMContentLoaded", updateUI);
+
 
 
     </script>
