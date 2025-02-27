@@ -97,14 +97,21 @@ def signup(user: UserSignup):
     users_collection.insert_one({"username": user.username, "password": hashed_password})
     return {"message": "User registered successfully!"}
 
+from pydantic import BaseModel
+
+class UserLogin(BaseModel):
+    username: str
+    password: str
+
 @app.post("/login")
-def login(username: str = Form(...), password: str = Form(...)):
-    user = users_collection.find_one({"username": username})
-    if not user or not pwd_context.verify(password, user["password"]):
+def login(user: UserLogin):
+    user_data = users_collection.find_one({"username": user.username})
+    if not user_data or not pwd_context.verify(user.password, user_data["password"]):
         raise HTTPException(status_code=401, detail="Invalid credentials.")
 
-    token = create_access_token({"sub": username})
+    token = create_access_token({"sub": user.username})
     return {"token": token}
+
 
 from fastapi import Depends
 
