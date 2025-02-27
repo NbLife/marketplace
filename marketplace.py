@@ -49,6 +49,7 @@ try:
     client = MongoClient(COSMOS_DB_URL, tls=True, tlsAllowInvalidCertificates=False, retryWrites=False, connectTimeoutMS=3000)
     db = client.marketplace
     collection = db.products
+    users_collection = db.users
     print("✅ Połączono z Cosmos DB (MongoDB API)")
 except Exception as e:
     print(f"❌ Błąd połączenia z Cosmos DB: {e}")
@@ -77,6 +78,43 @@ app.add_middleware(
 def read_root():
     return {"message": "Backend działa!", "env": APP_ENV}
 
+@app.post("/signup")
+def signup(username: str = Form(...), password: str = Form(...)):
+    if len(username) < 3 or len(password) < 6:
+        raise HTTPException(status_code=400, detail="Username must be at least 3 characters, password at least 6.")
+
+    existing_user = users_collection.find_one({"username": username})
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Username already exists.")
+
+    hashed_password = pwd_context.hash(password)
+    users_collection.insert_one({"username": username, "password": hashed_password})
+    return {"message": "User registered successfully!"}
+
+@app.post("/login")
+def login(username: str = Form(...), password: str = Form(...)):
+    user = users_collection.find_one({"username": username})
+    if not user or not pwd_context.verify(password, user["password"]):
+        raise HTTPException(status_code=401, detail="Invalid credentials.")
+
+    token = create_access_token({"sub": username})
+    return {"token": token}
+
+from fastapi import Depends
+
+def get_current_user(token: str = Depends(oauth2_scheme)):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username = payload.get("sub")
+        if username is None:
+            raise HTTPException(status_code=401, detail="Invalid token.")
+        return username
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired.")
+    except jwt.PyJWTError:
+        raise HTTPException(status_code=401, detail="Invalid token.")
+
+
 @app.get("/products")
 def get_products():
     try:
@@ -87,6 +125,41 @@ def get_products():
         raise HTTPException(status_code=500, detail=f"Błąd pobierania produktów: {str(e)}")
     
 @app.post("/add_product")
+async def add_product(
+    name: str = Form(...),
+    description: str = Form(...),
+    price: float = Form(...),
+    category: str = Form(...),
+    image: UploadFile = File(...),
+    current_user: str = Depends(get_current_user)
+):
+    """ Dodaje nowy produkt do Cosmos DB i Azure Blob Storage """
+    if not name or not description or not price or not category or not image:
+        raise HTTPException(status_code=400, detail="Wszystkie pola są wymagane!")
+
+    try:
+        blob_client = blob_service_client.get_blob_client(container=CONTAINER_NAME, blob=image.filename)
+        blob_client.upload_blob(image.file, overwrite=True)
+
+        from urllib.parse import quote
+        encoded_filename = quote(image.filename)
+        image_url = f"https://{AZURE_STORAGE_ACCOUNT_NAME}.blob.core.windows.net/{CONTAINER_NAME}/{encoded_filename}"
+
+        product = {
+            "name": name,
+            "description": description,
+            "price": price,
+            "category": category,
+            "image_url": image_url,
+            "owner": current_user
+        }
+        inserted = collection.insert_one(product)
+        return {"message": "Produkt dodany!", "id": str(inserted.inserted_id)}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Błąd dodawania produktu: {str(e)}")
+
+'''@app.post("/add_product")
 async def add_product(
     name: str = Form(...),
     description: str = Form(...),
@@ -135,7 +208,7 @@ async def add_product(
         return {"message": "Produkt dodany!", "id": str(inserted.inserted_id)}
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Błąd dodawania produktu: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Błąd dodawania produktu: {str(e)}")'''
 
 @app.delete("/delete_product/{product_id}")
 def delete_product(product_id: str):
