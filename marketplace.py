@@ -78,17 +78,23 @@ app.add_middleware(
 def read_root():
     return {"message": "Backend działa!", "env": APP_ENV}
 
+from pydantic import BaseModel
+
+class UserSignup(BaseModel):
+    username: str
+    password: str
+
 @app.post("/signup")
-def signup(username: str = Form(...), password: str = Form(...)):
-    if len(username) < 3 or len(password) < 6:
+def signup(user: UserSignup):
+    if len(user.username) < 3 or len(user.password) < 6:
         raise HTTPException(status_code=400, detail="Username must be at least 3 characters, password at least 6.")
 
-    existing_user = users_collection.find_one({"username": username})
+    existing_user = users_collection.find_one({"username": user.username})
     if existing_user:
         raise HTTPException(status_code=400, detail="Username already exists.")
 
-    hashed_password = pwd_context.hash(password)
-    users_collection.insert_one({"username": username, "password": hashed_password})
+    hashed_password = pwd_context.hash(user.password)
+    users_collection.insert_one({"username": user.username, "password": hashed_password})
     return {"message": "User registered successfully!"}
 
 @app.post("/login")
