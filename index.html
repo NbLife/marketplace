@@ -163,6 +163,20 @@
                         </div>`;
                 }
             });
+            products.forEach(product => {
+                if ((selectedCategory === "all" || product.category === selectedCategory) &&
+                    (product.name.toLowerCase().includes(searchQuery) || product.description.toLowerCase().includes(searchQuery))) {
+                    container.innerHTML += `
+                        <div class="product" id="product-${product.id}">
+                            <h3>${product.name}</h3>
+                            <p>${product.description}</p>
+                            <p><strong>${product.price} PLN</strong></p>
+                            <img src="${product.image_url}" width="150">
+                            <button onclick="deleteProduct('${product.id}')">Delete</button>
+                        </div>`;
+                }
+            });
+
         }
 
         async function addProduct() {
@@ -200,6 +214,29 @@
         }
 
         fetchProducts();
+
+        async function deleteProduct(productId) {
+            if (!confirm("Are you sure you want to delete this product?")) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${BACKEND_URL}/delete_product/${productId}`, {
+                    method: "DELETE"
+                });
+
+                const result = await response.json();
+                alert(result.message);
+
+                if (response.ok) {
+                    document.getElementById(`product-${productId}`).remove();
+                }
+            } catch (error) {
+                console.error("Error deleting product:", error);
+                alert("Error deleting product. Please try again.");
+            }
+        }
+
 
     function signup() {
         alert("Signup feature is not implemented yet.");
