@@ -24,7 +24,7 @@ COSMOS_DB_URL = os.getenv("COSMOS_DB_URL")  # Zmieniona zmienna
 AZURE_BLOB_CONNECTION_STRING = os.getenv("AZURE_BLOB_CONNECTION_STRING")
 AZURE_STORAGE_ACCOUNT_NAME = os.getenv("AZURE_STORAGE_ACCOUNT_NAME")
 CONTAINER_NAME = "product-images"
-SECRET_KEY = os.getenv("SECRET_KEY")
+#SECRET_KEY = os.getenv("SECRET_KEY")
 APP_ENV = os.getenv("APP_ENV", "development")
 
 SECRET_KEY = "supersecretkey"  # Zmień na bezpieczny klucz w zmiennych środowiskowych
