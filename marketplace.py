@@ -7,6 +7,13 @@ from bson import ObjectId
 from dotenv import load_dotenv
 import logging
 
+#dodaje
+from passlib.context import CryptContext
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from datetime import datetime, timedelta
+import jwt
+
+
 # Konfiguracja logowania błędów
 logging.basicConfig(level=logging.ERROR)
 
