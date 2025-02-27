@@ -6,4 +6,6 @@ motor
 fastapi
 uvicorn
 python-multipart  
-
+pyjwt[crypto]
+passlib
+bcrypt
