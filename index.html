@@ -78,6 +78,7 @@
         <h1>Marketplace</h1>
         <button onclick="showLoginForm()">Login</button>
         <button onclick="showSignupForm()">Sign Up</button>
+        <button id="logoutButton" onclick="logout()" style="display:none;">Logout</button>
     </header>
     
     <nav>
@@ -226,13 +227,79 @@
         }
 
 
-    function signup() {
-        alert("Signup feature is not implemented yet.");
-    }
+        async function signup() {
+            const username = document.getElementById('signupUsername').value.trim();
+            const password = document.getElementById('signupPassword').value.trim();
 
-    function login() {
-        alert("Login feature is not implemented yet.");
-    }
+            if (username.length < 3 || password.length < 6) {
+                alert("Username must be at least 3 characters, and password at least 6 characters.");
+                return;
+            }
+
+            try {
+                const response = await fetch(`${BACKEND_URL}/signup`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const result = await response.json();
+                alert(result.message);
+
+                if (response.ok) {
+                    closeForm('signupForm');
+                }
+            } catch (error) {
+                console.error("Signup error:", error);
+                alert("Error during signup. Try again.");
+            }
+        }
+
+        async function login() {
+            const username = document.getElementById('loginUsername').value.trim();
+            const password = document.getElementById('loginPassword').value.trim();
+
+            try {
+                const response = await fetch(`${BACKEND_URL}/login`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const result = await response.json();
+                if (response.ok) {
+                    localStorage.setItem("token", result.token);
+                    alert("Login successful!");
+                    closeForm('loginForm');
+                    updateUI();
+                } else {
+                    alert(result.detail);
+                }
+            } catch (error) {
+                console.error("Login error:", error);
+                alert("Error during login. Try again.");
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem("token");
+            alert("Logged out!");
+            updateUI();
+        }
+
+        function updateUI() {
+            const token = localStorage.getItem("token");
+            if (token) {
+                document.getElementById('logoutButton').style.display = "block";
+                document.getElementById('loginForm').style.display = "none";
+                document.getElementById('signupForm').style.display = "none";
+            } else {
+                document.getElementById('logoutButton').style.display = "none";
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", updateUI);
+
 
     </script>
 </body>
