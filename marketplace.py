@@ -335,7 +335,9 @@ def debug_env():
         "AZURE_BLOB_CONNECTION_STRING": os.getenv("AZURE_BLOB_CONNECTION_STRING"),
         "PORT": os.getenv("PORT"),
         "WEBSITES_PORT": os.getenv("WEBSITES_PORT"),
-        "APP_ENV": os.getenv("APP_ENV")
+        "APP_ENV": os.getenv("APP_ENV"),
+        "SECRET_KEY": os.getenv("SECRET_KEY"),
+        "SMTP_EMAIL": os.getenv("SMTP_EMAIL")
     }
 
 if __name__ == "__main__":
