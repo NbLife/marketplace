@@ -20,7 +20,7 @@ from email.mime.multipart import MIMEMultipart
 
 SMTP_SERVER = "smtp.gmail.com"  # Możesz użyć innego serwera SMTP
 SMTP_PORT = 587
-SMTP_EMAIL = os.getenv("lifartlook@gmail.com")  # Twój adres e-mail
+SMTP_EMAIL = os.getenv("SMTP_EMAIL")  # Twój adres e-mail
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")  # Hasło lub klucz API
 
 def send_email(to_email, subject, body):
