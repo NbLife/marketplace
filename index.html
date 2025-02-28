@@ -102,7 +102,7 @@
     
     <div id="loginForm" class="modal hidden">
         <h2>Login</h2>
-        <input type="text" id="loginUsername" placeholder="Username">
+        <input type="email" id="loginEmail" placeholder="Email">  <!-- 👈 Logowanie po e-mailu -->
         <input type="password" id="loginPassword" placeholder="Password">
         <button onclick="login()">Login</button>
         <button onclick="closeForm('loginForm')">Close</button>
@@ -111,10 +111,11 @@
     <div id="signupForm" class="modal hidden">
         <h2>Sign Up</h2>
         <input type="text" id="signupUsername" placeholder="Username">
+        <input type="email" id="signupEmail" placeholder="Email">  <!-- 👈 Nowe pole -->
         <input type="password" id="signupPassword" placeholder="Password">
         <button onclick="signup()">Sign Up</button>
         <button onclick="closeForm('signupForm')">Close</button>
-    </div>
+    </div>    
 
     <div id="addProductForm" class="modal hidden">
         <h2>Add Product</h2>
@@ -235,21 +236,26 @@
 
         async function signup() {
             const username = document.getElementById('signupUsername').value.trim();
-            const email = document.getElementById('signupEmail').value.trim();
+            const email = document.getElementById('signupEmail').value.trim();  // 👈 Pobiera email
             const password = document.getElementById('signupPassword').value.trim();
+
+            if (username.length < 3 || password.length < 6 || email.length < 5) {
+                alert("Username must be at least 3 characters, password at least 6 characters, and email must be valid.");
+                return;
+            }
 
             try {
                 const response = await fetch(`${BACKEND_URL}/signup`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ username, email, password })
+                    body: JSON.stringify({ username, email, password })  // 👈 Wysyła email do backendu
                 });
 
                 const result = await response.json();
+                alert(result.message);
+
                 if (response.ok) {
-                    alert("Registration successful! Check your email to confirm your account.");
-                } else {
-                    alert(result.detail);
+                    closeForm('signupForm');
                 }
             } catch (error) {
                 console.error("Signup error:", error);
@@ -257,16 +263,15 @@
             }
         }
 
-
         async function login() {
-            const username = document.getElementById('loginUsername').value.trim();
+            const email = document.getElementById('loginEmail').value.trim();  // 👈 Pobiera e-mail
             const password = document.getElementById('loginPassword').value.trim();
 
             try {
                 const response = await fetch(`${BACKEND_URL}/login`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ username, password })
+                    body: JSON.stringify({ email, password })  // 👈 Wysyła e-mail do backendu
                 });
 
                 const result = await response.json();
@@ -308,6 +313,7 @@
                 alert("Error sending reset email. Try again.");
             }
         }
+
 
 
 

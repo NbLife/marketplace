@@ -101,10 +101,11 @@ app.add_middleware(
 def read_root():
     return {"message": "Backend działa!", "env": APP_ENV}
 
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 
 class UserSignup(BaseModel):
     username: str
+    email: EmailStr  # 👈 Sprawdzamy poprawność adresu e-mail
     password: str
 
 @app.post("/signup")
@@ -113,33 +114,42 @@ def signup(user: UserSignup):
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already exists.")
 
+    existing_username = users_collection.find_one({"username": user.username})
+    if existing_username:
+        raise HTTPException(status_code=400, detail="Username already exists.")
+
     hashed_password = pwd_context.hash(user.password)
-    token = create_access_token({"email": user.email}, timedelta(minutes=60))
+    confirm_token = create_access_token({"email": user.email}, timedelta(minutes=60))
 
     users_collection.insert_one({
         "username": user.username,
         "email": user.email,
         "password": hashed_password,
-        "confirmed": False,
-        "confirm_token": token
+        "confirmed": False,  # 👈 Musi potwierdzić e-mail przed logowaniem
+        "confirm_token": confirm_token
     })
 
-    confirm_link = f"https://my-backend-fastapi-hffeg4hcchcddhac.westeurope-01.azurewebsites.net/confirm_email/{token}"
+    confirm_link = f"https://my-backend-fastapi-hffeg4hcchcddhac.westeurope-01.azurewebsites.net/confirm_email/{confirm_token}"
     send_email(user.email, "Confirm your email", f"Click here to confirm: {confirm_link}")
 
-    return {"message": "User registered! Please check your email to confirm your account."}
+    return {"message": "User registered! Check your email to confirm your account."}
 
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 
 class UserLogin(BaseModel):
     username: str
+    email: EmailStr  # 👈 Teraz logowanie odbywa się przez e-mail
     password: str
+
 
 @app.post("/login")
 def login(user: UserLogin):
-    user_data = users_collection.find_one({"username": user.username})
+    user_data = users_collection.find_one({"email": user.username})  # Logowanie po e-mailu, nie nazwie
     if not user_data or not pwd_context.verify(user.password, user_data["password"]):
         raise HTTPException(status_code=401, detail="Invalid credentials.")
+
+    if not user_data.get("confirmed", False):
+        raise HTTPException(status_code=403, detail="Email not confirmed. Check your inbox.")
 
     token = create_access_token({"sub": user.username})
     return {"token": token}
@@ -149,41 +159,52 @@ def confirm_email(token: str):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email = payload.get("email")
+        user = users_collection.find_one({"email": email})
+
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found.")
+
         users_collection.update_one({"email": email}, {"$set": {"confirmed": True}})
-        return {"message": "Email confirmed!"}
+        return {"message": "Email confirmed! You can now log in."}
+
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=400, detail="Token expired.")
     except jwt.PyJWTError:
         raise HTTPException(status_code=400, detail="Invalid token.")
     
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr  # 👈 Automatyczna walidacja poprawności e-maila
+
 @app.post("/forgot_password")
-def forgot_password(email: str):
-    user = users_collection.find_one({"email": email})
+def forgot_password(request: ForgotPasswordRequest):
+    user = users_collection.find_one({"email": request.email})
     if not user:
         raise HTTPException(status_code=400, detail="Email not found.")
 
-    reset_token = create_access_token({"email": email}, timedelta(minutes=30))
+    reset_token = create_access_token({"email": request.email}, timedelta(minutes=30))
     reset_link = f"https://my-backend-fastapi-hffeg4hcchcddhac.westeurope-01.azurewebsites.net/reset_password/{reset_token}"
 
-    send_email(email, "Reset your password", f"Click here to reset your password: {reset_link}")
+    send_email(request.email, "Reset your password", f"Click here to reset your password: {reset_link}")
     return {"message": "Check your email for password reset link."}
 
+class ResetPasswordRequest(BaseModel):
+    new_password: str
+
 @app.post("/reset_password/{token}")
-def reset_password(token: str, new_password: str = Form(...)):
+def reset_password(token: str, request: ResetPasswordRequest):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email = payload.get("email")
 
-        hashed_password = pwd_context.hash(new_password)
+        hashed_password = pwd_context.hash(request.new_password)
         users_collection.update_one({"email": email}, {"$set": {"password": hashed_password}})
 
         return {"message": "Password reset successful!"}
+
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=400, detail="Token expired.")
     except jwt.PyJWTError:
         raise HTTPException(status_code=400, detail="Invalid token.")
-
-
 
 from fastapi import Depends
 
