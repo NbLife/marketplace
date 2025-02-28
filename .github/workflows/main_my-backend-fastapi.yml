@@ -83,5 +83,6 @@ jobs:
         id: deploy-to-webapp
         with:
           app-name: 'my-backend-fastapi'
+          #package: .
           slot-name: 'Production'
           
