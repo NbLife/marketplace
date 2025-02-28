@@ -5,10 +5,12 @@ azure-storage-blob
 motor
 fastapi
 uvicorn
-python-multipart  
+python-multipart 
 pyjwt[crypto]
 passlib
 bcrypt
 dnspython
 httpx 
 emails
+pydantic[email]
+PyJWT
