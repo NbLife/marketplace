@@ -110,26 +110,30 @@ class UserSignup(BaseModel):
 
 @app.post("/signup")
 def signup(user: UserSignup):
+    print(f"Przychodzące dane: {user.dict()}")  # Debugowanie
+
     existing_user = users_collection.find_one({"email": user.email})
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already exists.")
-
+    
     existing_username = users_collection.find_one({"username": user.username})
     if existing_username:
         raise HTTPException(status_code=400, detail="Username already exists.")
-
+    
     hashed_password = pwd_context.hash(user.password)
     confirm_token = create_access_token({"email": user.email}, timedelta(minutes=60))
-
+    
     users_collection.insert_one({
         "username": user.username,
         "email": user.email,
         "password": hashed_password,
-        "confirmed": False,  # 👈 Musi potwierdzić e-mail przed logowaniem
+        "confirmed": False,
         "confirm_token": confirm_token
     })
 
     confirm_link = f"https://my-backend-fastapi-hffeg4hcchcddhac.westeurope-01.azurewebsites.net/confirm_email/{confirm_token}"
+    print(f"Wysłano email na: {user.email} z linkiem: {confirm_link}")  # Debugowanie
+
     send_email(user.email, "Confirm your email", f"Click here to confirm: {confirm_link}")
 
     return {"message": "User registered! Check your email to confirm your account."}
@@ -230,6 +234,8 @@ def get_products():
         logging.error(f"Błąd pobierania produktów: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Błąd pobierania produktów: {str(e)}")
     
+from fastapi import Depends, Security
+
 @app.post("/add_product")
 async def add_product(
     name: str = Form(...),
@@ -237,11 +243,13 @@ async def add_product(
     price: float = Form(...),
     category: str = Form(...),
     image: UploadFile = File(...),
-    current_user: str = Depends(get_current_user)
+    current_user: str = Security(get_current_user, auto_error=False)  # Nie blokuje całkowicie
 ):
-    """ Dodaje nowy produkt do Cosmos DB i Azure Blob Storage """
+    if not current_user:
+        raise HTTPException(status_code=401, detail="You must be logged in to add a product.")
+
     if not name or not description or not price or not category or not image:
-        raise HTTPException(status_code=400, detail="Wszystkie pola są wymagane!")
+        raise HTTPException(status_code=400, detail="All fields are required!")
 
     try:
         blob_client = blob_service_client.get_blob_client(container=CONTAINER_NAME, blob=image.filename)
@@ -260,10 +268,10 @@ async def add_product(
             "owner": current_user
         }
         inserted = collection.insert_one(product)
-        return {"message": "Produkt dodany!", "id": str(inserted.inserted_id)}
+        return {"message": "Product added!", "id": str(inserted.inserted_id)}
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Błąd dodawania produktu: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error adding product: {str(e)}")
 
 '''@app.post("/add_product")
 async def add_product(
