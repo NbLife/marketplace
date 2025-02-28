@@ -13,6 +13,29 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from datetime import datetime, timedelta
 import jwt
 
+#dodaje
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+SMTP_SERVER = "smtp.gmail.com"  # Możesz użyć innego serwera SMTP
+SMTP_PORT = 587
+SMTP_EMAIL = os.getenv("lifartlook@gmail.com")  # Twój adres e-mail
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")  # Hasło lub klucz API
+
+def send_email(to_email, subject, body):
+    msg = MIMEMultipart()
+    msg["From"] = SMTP_EMAIL
+    msg["To"] = to_email
+    msg["Subject"] = subject
+    msg.attach(MIMEText(body, "plain"))
+
+    with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+        server.starttls()
+        server.login(SMTP_EMAIL, SMTP_PASSWORD)
+        server.sendmail(SMTP_EMAIL, to_email, msg.as_string())
+
+
 
 # Konfiguracja logowania błędów
 logging.basicConfig(level=logging.ERROR)
@@ -86,16 +109,25 @@ class UserSignup(BaseModel):
 
 @app.post("/signup")
 def signup(user: UserSignup):
-    if len(user.username) < 3 or len(user.password) < 6:
-        raise HTTPException(status_code=400, detail="Username must be at least 3 characters, password at least 6.")
-
-    existing_user = users_collection.find_one({"username": user.username})
+    existing_user = users_collection.find_one({"email": user.email})
     if existing_user:
-        raise HTTPException(status_code=400, detail="Username already exists.")
+        raise HTTPException(status_code=400, detail="Email already exists.")
 
     hashed_password = pwd_context.hash(user.password)
-    users_collection.insert_one({"username": user.username, "password": hashed_password})
-    return {"message": "User registered successfully!"}
+    token = create_access_token({"email": user.email}, timedelta(minutes=60))
+
+    users_collection.insert_one({
+        "username": user.username,
+        "email": user.email,
+        "password": hashed_password,
+        "confirmed": False,
+        "confirm_token": token
+    })
+
+    confirm_link = f"https://my-backend-fastapi-hffeg4hcchcddhac.westeurope-01.azurewebsites.net/confirm_email/{token}"
+    send_email(user.email, "Confirm your email", f"Click here to confirm: {confirm_link}")
+
+    return {"message": "User registered! Please check your email to confirm your account."}
 
 from pydantic import BaseModel
 
@@ -111,6 +143,46 @@ def login(user: UserLogin):
 
     token = create_access_token({"sub": user.username})
     return {"token": token}
+
+@app.get("/confirm_email/{token}")
+def confirm_email(token: str):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email = payload.get("email")
+        users_collection.update_one({"email": email}, {"$set": {"confirmed": True}})
+        return {"message": "Email confirmed!"}
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=400, detail="Token expired.")
+    except jwt.PyJWTError:
+        raise HTTPException(status_code=400, detail="Invalid token.")
+    
+@app.post("/forgot_password")
+def forgot_password(email: str):
+    user = users_collection.find_one({"email": email})
+    if not user:
+        raise HTTPException(status_code=400, detail="Email not found.")
+
+    reset_token = create_access_token({"email": email}, timedelta(minutes=30))
+    reset_link = f"https://my-backend-fastapi-hffeg4hcchcddhac.westeurope-01.azurewebsites.net/reset_password/{reset_token}"
+
+    send_email(email, "Reset your password", f"Click here to reset your password: {reset_link}")
+    return {"message": "Check your email for password reset link."}
+
+@app.post("/reset_password/{token}")
+def reset_password(token: str, new_password: str = Form(...)):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email = payload.get("email")
+
+        hashed_password = pwd_context.hash(new_password)
+        users_collection.update_one({"email": email}, {"$set": {"password": hashed_password}})
+
+        return {"message": "Password reset successful!"}
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=400, detail="Token expired.")
+    except jwt.PyJWTError:
+        raise HTTPException(status_code=400, detail="Invalid token.")
+
 
 
 from fastapi import Depends

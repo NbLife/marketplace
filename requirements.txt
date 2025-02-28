@@ -9,3 +9,6 @@ python-multipart
 pyjwt[crypto]
 passlib
 bcrypt
+dnspython
+httpx 
+emails

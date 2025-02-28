@@ -79,6 +79,7 @@
         <button onclick="showLoginForm()">Login</button>
         <button onclick="showSignupForm()">Sign Up</button>
         <button id="logoutButton" onclick="logout()" style="display:none;">Logout</button>
+        <button onclick="forgotPassword()">Forgot Password?</button>
     </header>
     
     <nav>
@@ -234,31 +235,28 @@
 
         async function signup() {
             const username = document.getElementById('signupUsername').value.trim();
+            const email = document.getElementById('signupEmail').value.trim();
             const password = document.getElementById('signupPassword').value.trim();
-
-            if (username.length < 3 || password.length < 6) {
-                alert("Username must be at least 3 characters, and password at least 6 characters.");
-                return;
-            }
 
             try {
                 const response = await fetch(`${BACKEND_URL}/signup`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ username, password })
+                    body: JSON.stringify({ username, email, password })
                 });
 
                 const result = await response.json();
-                alert(result.message);
-
                 if (response.ok) {
-                    closeForm('signupForm');
+                    alert("Registration successful! Check your email to confirm your account.");
+                } else {
+                    alert(result.detail);
                 }
             } catch (error) {
                 console.error("Signup error:", error);
                 alert("Error during signup. Try again.");
             }
         }
+
 
         async function login() {
             const username = document.getElementById('loginUsername').value.trim();
@@ -291,6 +289,26 @@
             alert("Logged out!");
             updateUI();
         }
+    
+        async function forgotPassword() {
+            const email = prompt("Enter your email:");
+            if (!email) return;
+
+            try {
+                const response = await fetch(`${BACKEND_URL}/forgot_password`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email })
+                });
+
+                const result = await response.json();
+                alert(result.message);
+            } catch (error) {
+                console.error("Forgot password error:", error);
+                alert("Error sending reset email. Try again.");
+            }
+        }
+
 
 
         function updateUI() {
