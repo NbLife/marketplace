@@ -75,7 +75,7 @@ jobs:
           #subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Wait before deploy
-        run: sleep 30  # Wait 10 seconds to prevent SCM conflicts
+        run: sleep 60  # Wait 10 seconds to prevent SCM conflicts
 
 
       - name: 'Deploy to Azure Web App'
@@ -83,6 +83,5 @@ jobs:
         id: deploy-to-webapp
         with:
           app-name: 'my-backend-fastapi'
-          #package: .
           slot-name: 'Production'
           
