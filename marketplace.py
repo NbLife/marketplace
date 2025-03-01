@@ -52,6 +52,7 @@ AZURE_STORAGE_ACCOUNT_NAME = os.getenv("AZURE_STORAGE_ACCOUNT_NAME")
 CONTAINER_NAME = "product-images"
 SECRET_KEY = os.getenv("SECRET_KEY")
 APP_ENV = os.getenv("APP_ENV", "development")
+BACKEND_URL = "https://my-backend-fastapi-hffeg4hcchcddhac.westeurope-01.azurewebsites.net"
 
 #dodaje
 ALGORITHM = "HS256"
@@ -108,35 +109,41 @@ class UserSignup(BaseModel):
     email: EmailStr  # 👈 Sprawdzamy poprawność adresu e-mail
     password: str
 
+from pydantic import ValidationError
+
 @app.post("/signup")
 async def signup(user: UserSignup):
-    print(f"Przychodzące dane: {user.dict()}")  # Debugowanie
+    try:
+        print(f"Przychodzące dane: {user.dict()}")  # Debugowanie
 
-    existing_user = users_collection.find_one({"email": user.email})
-    if existing_user:
-        raise HTTPException(status_code=400, detail="Email już istnieje.")
+        if users_collection.find_one({"email": user.email}):
+            raise HTTPException(status_code=400, detail="Email już istnieje.")
+
+        if users_collection.find_one({"username": user.username}):
+            raise HTTPException(status_code=400, detail="Nazwa użytkownika już istnieje.")
+
+        hashed_password = pwd_context.hash(user.password)
+        confirm_token = create_access_token({"email": user.email}, timedelta(minutes=60))
+
+        users_collection.insert_one({
+            "username": user.username,
+            "email": user.email,
+            "password": hashed_password,
+            "confirmed": False,
+            "confirm_token": confirm_token
+        })
+
+        confirm_link = f"{BACKEND_URL}/confirm_email/{confirm_token}"
+        send_email(user.email, "Potwierdź email", f"Kliknij tutaj: {confirm_link}")
+
+        return {"message": "Zarejestrowano! Sprawdź email, aby potwierdzić konto."}
     
-    existing_username = users_collection.find_one({"username": user.username})
-    if existing_username:
-        raise HTTPException(status_code=400, detail="Nazwa użytkownika już istnieje.")
-    
-    hashed_password = pwd_context.hash(user.password)
-    confirm_token = create_access_token({"email": user.email}, timedelta(minutes=60))
-    
-    users_collection.insert_one({
-        "username": user.username,
-        "email": user.email,
-        "password": hashed_password,
-        "confirmed": False,
-        "confirm_token": confirm_token
-    })
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        print(f"❌ Błąd rejestracji: {e}")
+        raise HTTPException(status_code=500, detail="Wewnętrzny błąd serwera")
 
-    confirm_link = f"{BACKEND_URL}/confirm_email/{confirm_token}"
-    print(f"Wysłano email na: {user.email} z linkiem: {confirm_link}")  # Debugowanie
-
-    send_email(user.email, "Potwierdź email", f"Kliknij tutaj: {confirm_link}")
-
-    return {"message": "Zarejestrowano! Sprawdź email, aby potwierdzić konto."}
 
 from pydantic import BaseModel, EmailStr
 
@@ -148,7 +155,7 @@ class UserLogin(BaseModel):
 
 @app.post("/login")
 def login(user: UserLogin):
-    user_data = users_collection.find_one({"email": user.username})  # Logowanie po e-mailu, nie nazwie
+    user_data = users_collection.find_one({"email": user.email})  # Logowanie po e-mailu, nie nazwie
     if not user_data or not pwd_context.verify(user.password, user_data["password"]):
         raise HTTPException(status_code=401, detail="Invalid credentials.")
 
