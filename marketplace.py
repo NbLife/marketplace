@@ -120,9 +120,11 @@ async def signup(user: UserSignup):
         print(f"📩 Przychodzące dane: {user.dict()}")
 
         if users_collection.find_one({"email": user.email}):
+            print("⚠️ Email już istnieje!")
             raise HTTPException(status_code=400, detail="Email już istnieje.")
 
         if users_collection.find_one({"username": user.username}):
+            print("⚠️ Nazwa użytkownika już istnieje!")
             raise HTTPException(status_code=400, detail="Nazwa użytkownika już istnieje.")
 
         hashed_password = pwd_context.hash(user.password)
@@ -141,18 +143,12 @@ async def signup(user: UserSignup):
 
         send_email(user.email, "Potwierdź email", f"Kliknij tutaj: {confirm_link}")
 
+        print("✅ Rejestracja zakończona sukcesem!")
         return {"message": "Zarejestrowano! Sprawdź email, aby potwierdzić konto."}
 
-    except ValidationError as e:
-        print(f"⚠️ Błąd walidacji: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
-
-    except pymongo.errors.DuplicateKeyError:
-        raise HTTPException(status_code=400, detail="Email lub nazwa użytkownika już istnieje.")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Błąd serwera: {str(e)}")
-
-
+        print(f"❌ Błąd rejestracji: {e}")
+        raise HTTPException(status_code=500, detail=f"Błąd rejestracji: {e}")
 
 from pydantic import BaseModel, EmailStr
 
@@ -314,6 +310,14 @@ def delete_product(product_id: str, token: str = Depends(oauth2_scheme)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Błąd usuwania produktu: {str(e)}")
 
+from fastapi.responses import JSONResponse
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Internal Server Error: {str(exc)}"},
+    )
 
 @app.get("/debug/env")
 def debug_env():
@@ -332,6 +336,7 @@ if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))  # Pobiera port od Azure, domyślnie 8000
     uvicorn.run(app, host="0.0.0.0", port=port)
+
 
 
 

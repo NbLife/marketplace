@@ -269,17 +269,8 @@
             const email = document.getElementById('signupEmail').value.trim();
             const password = document.getElementById('signupPassword').value.trim();
 
-            // 🔹 Walidacja danych przed wysłaniem do backendu
-            if (username.length < 3) {
-                alert("Nazwa użytkownika musi mieć co najmniej 3 znaki.");
-                return;
-            }
-            if (password.length < 6) {
-                alert("Hasło musi mieć co najmniej 6 znaków.");
-                return;
-            }
-            if (!email.includes("@") || !email.includes(".")) {
-                alert("Podaj poprawny adres e-mail.");
+            if (username.length < 3 || password.length < 6 || email.length < 5) {
+                alert("Username must be at least 3 characters, password at least 6 characters, and email must be valid.");
                 return;
             }
 
@@ -290,27 +281,26 @@
                     body: JSON.stringify({ username, email, password })
                 });
 
-                const result = await response.json();
-
-                // 🔹 Obsługa błędów od backendu
-                if (!response.ok) {
-                    if (response.status === 400) {
-                        alert(result.detail || "Błąd rejestracji: Nieprawidłowe dane.");
-                    } else if (response.status === 500) {
-                        alert("Wewnętrzny błąd serwera. Spróbuj ponownie później.");
-                    } else {
-                        alert("Nieznany błąd. Spróbuj ponownie.");
-                    }
+                let result;
+                try {
+                    result = await response.json();
+                } catch (jsonError) {
+                    console.error("Błąd parsowania JSON:", jsonError);
+                    alert("Wystąpił błąd serwera. Spróbuj ponownie później.");
                     return;
                 }
 
-                // 🔹 Jeśli wszystko OK, zamykamy formularz i informujemy użytkownika
-                alert("Rejestracja zakończona! Sprawdź e-mail, aby potwierdzić konto.");
+                if (!response.ok) {
+                    alert(result.detail || "Błąd rejestracji.");
+                    return;
+                }
+
+                alert(result.message);
                 closeForm('signupForm');
 
             } catch (error) {
-                console.error("Błąd rejestracji:", error);
-                alert("Wystąpił błąd sieci. Sprawdź połączenie i spróbuj ponownie.");
+                console.error("Signup error:", error);
+                alert("Błąd sieci. Sprawdź połączenie i spróbuj ponownie.");
             }
         }
 
