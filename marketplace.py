@@ -18,6 +18,9 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
+#dodaje
+from jose.exceptions import JWTError
+
 SMTP_SERVER = "smtp.gmail.com"  # Możesz użyć innego serwera SMTP
 SMTP_PORT = 587
 SMTP_EMAIL = os.getenv("SMTP_EMAIL")  # Twój adres e-mail
