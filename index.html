@@ -306,29 +306,35 @@
 
 
         async function login() {
-            const email = document.getElementById('loginEmail').value.trim();  // 👈 Pobiera e-mail
+            const email = document.getElementById('loginEmail').value.trim();  
             const password = document.getElementById('loginPassword').value.trim();
+
+            if (!email || !password) {
+                alert("Wypełnij wszystkie pola!");
+                return;
+            }
 
             try {
                 const response = await fetch(`${BACKEND_URL}/login`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ email, password })  // 👈 Usuń username
+                    body: JSON.stringify({ email: email, password: password }) // 👈 Sprawdź, czy API oczekuje emaila!
                 });
 
-
                 const result = await response.json();
-                if (response.ok) {
-                    localStorage.setItem("token", result.token);
-                    alert("Login successful!");
-                    closeForm('loginForm');
-                    updateUI();
-                } else {
-                    alert(result.detail);
+
+                if (!response.ok) {
+                    alert(result.detail || "Błąd logowania!");
+                    return;
                 }
+
+                localStorage.setItem("token", result.token);
+                alert("Zalogowano pomyślnie!");
+                closeForm('loginForm');
+                updateUI();
             } catch (error) {
-                console.error("Login error:", error);
-                alert("Error during login. Try again.");
+                console.error("Błąd logowania:", error);
+                alert("Wystąpił błąd logowania. Spróbuj ponownie.");
             }
         }
 
@@ -356,6 +362,28 @@
                 alert("Error sending reset email. Try again.");
             }
         }
+
+        async function resetPassword(newPassword, token) {
+            try {
+                const response = await fetch(`${BACKEND_URL}/reset_password/${token}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ new_password: newPassword }) // 👈 API wymaga new_password!
+                });
+
+                const result = await response.json();
+                if (!response.ok) {
+                    alert(result.detail || "Błąd resetowania hasła!");
+                    return;
+                }
+
+                alert("Hasło zmienione! Możesz się teraz zalogować.");
+            } catch (error) {
+                console.error("Błąd resetowania hasła:", error);
+                alert("Coś poszło nie tak. Spróbuj ponownie.");
+            }
+        }
+
 
 
         function updateUI() {
