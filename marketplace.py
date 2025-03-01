@@ -344,23 +344,29 @@ async def add_product(
         print(f"❌ Błąd dodawania produktu: {e}")
         raise HTTPException(status_code=500, detail=f"Błąd serwera: {e}")
 
+from fastapi import Depends
+
 @app.delete("/delete_product/{product_id}")
 def delete_product(product_id: str, token: str = Depends(oauth2_scheme)):
+    """ Usuwa produkt z Cosmos DB - tylko dla zalogowanych użytkowników """
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
         user_email = payload.get("sub")
         user = users_collection.find_one({"email": user_email})
 
         if not user:
-            raise HTTPException(status_code=401, detail="Nieprawidłowy token.")
+            raise HTTPException(status_code=401, detail="Nieautoryzowany.")
 
         result = collection.delete_one({"_id": ObjectId(product_id)})
         if result.deleted_count == 0:
             raise HTTPException(status_code=404, detail="Produkt nie został znaleziony")
-        
+
         return {"message": "Produkt usunięty"}
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Nieautoryzowany.")
+
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Sesja wygasła. Zaloguj się ponownie.")
+    except jwt.PyJWTError:
+        raise HTTPException(status_code=401, detail="Nieprawidłowy token.")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Błąd usuwania produktu: {str(e)}")
 
