@@ -344,7 +344,7 @@ def debug_env():
         "PORT": os.getenv("PORT"),
         "WEBSITES_PORT": os.getenv("WEBSITES_PORT"),
         "APP_ENV": os.getenv("APP_ENV"),
-        "SECRET_KEY": os.getenv("SECRET_KEY"),
+        "SECRET_KEY": os.getenv("SECRET_KEY"), 
         "SMTP_EMAIL": os.getenv("SMTP_EMAIL")
     }
 
