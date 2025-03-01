@@ -211,11 +211,29 @@ def forgot_password(request: ForgotPasswordRequest):
     send_email(request.email, "Reset your password", f"Click here to reset your password: {reset_link}")
     return {"message": "Check your email for password reset link."}
 
+from fastapi import Request, Form
+from fastapi.responses import HTMLResponse, RedirectResponse
+
+@app.get("/reset_password/{token}", response_class=HTMLResponse)
+def reset_password_page(token: str):
+    """ Strona resetowania hasła """
+    return f"""
+    <html>
+    <body>
+        <h2>Reset your password</h2>
+        <form method="post" action="/reset_password/{token}">
+            <input type="password" name="new_password" placeholder="New Password" required>
+            <button type="submit">Reset Password</button>
+        </form>
+    </body>
+    </html>
+    """
+
 class ResetPasswordRequest(BaseModel):
     new_password: str
 
 @app.post("/reset_password/{token}")
-def reset_password(token: str, request: ResetPasswordRequest):
+async def reset_password(token: str, request: Request):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email = payload.get("email")
@@ -224,15 +242,18 @@ def reset_password(token: str, request: ResetPasswordRequest):
         if not user:
             raise HTTPException(status_code=400, detail="Nie znaleziono użytkownika.")
 
-        hashed_password = pwd_context.hash(request.new_password)
+        form_data = await request.form()
+        new_password = form_data["new_password"]
+
+        hashed_password = pwd_context.hash(new_password)
         users_collection.update_one({"email": email}, {"$set": {"password": hashed_password}})
 
-        return {"message": "Hasło zostało zmienione pomyślnie!"}
+        return RedirectResponse(url="/login", status_code=303)  # 👈 Przekierowanie do logowania
 
     except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=400, detail="Token wygasł.")
+        return HTMLResponse("<h2>Token wygasł. Spróbuj ponownie.</h2>", status_code=400)
     except jwt.PyJWTError:
-        raise HTTPException(status_code=400, detail="Nieprawidłowy token.")
+        return HTMLResponse("<h2>Nieprawidłowy token.</h2>", status_code=400)
 
 from fastapi import Depends
 
