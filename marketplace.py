@@ -116,6 +116,7 @@ async def signup(user: UserSignup):
     try:
         print(f"Przychodzące dane: {user.dict()}")  # Debugowanie
 
+        # Sprawdzenie czy użytkownik istnieje
         if users_collection.find_one({"email": user.email}):
             raise HTTPException(status_code=400, detail="Email już istnieje.")
 
@@ -137,13 +138,13 @@ async def signup(user: UserSignup):
         send_email(user.email, "Potwierdź email", f"Kliknij tutaj: {confirm_link}")
 
         return {"message": "Zarejestrowano! Sprawdź email, aby potwierdzić konto."}
-    
+
     except ValidationError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
     except Exception as e:
         print(f"❌ Błąd rejestracji: {e}")
-        raise HTTPException(status_code=500, detail="Wewnętrzny błąd serwera")
-
+        raise HTTPException(status_code=500, detail=f"Wewnętrzny błąd serwera: {str(e)}")
 
 from pydantic import BaseModel, EmailStr
 
@@ -173,15 +174,18 @@ def confirm_email(token: str):
         user = users_collection.find_one({"email": email})
 
         if not user:
-            raise HTTPException(status_code=404, detail="User not found.")
+            raise HTTPException(status_code=404, detail="Użytkownik nie istnieje.")
+
+        if user.get("confirmed"):
+            return {"message": "Email już został potwierdzony."}
 
         users_collection.update_one({"email": email}, {"$set": {"confirmed": True}})
-        return {"message": "Email confirmed! You can now log in."}
+        return {"message": "Email potwierdzony! Możesz teraz się zalogować."}
 
     except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=400, detail="Token expired.")
+        raise HTTPException(status_code=400, detail="Token wygasł.")
     except jwt.PyJWTError:
-        raise HTTPException(status_code=400, detail="Invalid token.")
+        raise HTTPException(status_code=400, detail="Nieprawidłowy token.")
     
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr  # 👈 Automatyczna walidacja poprawności e-maila
@@ -206,16 +210,20 @@ def reset_password(token: str, request: ResetPasswordRequest):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email = payload.get("email")
+        user = users_collection.find_one({"email": email})
+
+        if not user:
+            raise HTTPException(status_code=400, detail="Nie znaleziono użytkownika.")
 
         hashed_password = pwd_context.hash(request.new_password)
         users_collection.update_one({"email": email}, {"$set": {"password": hashed_password}})
 
-        return {"message": "Password reset successful!"}
+        return {"message": "Hasło zostało zmienione pomyślnie!"}
 
     except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=400, detail="Token expired.")
+        raise HTTPException(status_code=400, detail="Token wygasł.")
     except jwt.PyJWTError:
-        raise HTTPException(status_code=400, detail="Invalid token.")
+        raise HTTPException(status_code=400, detail="Nieprawidłowy token.")
 
 from fastapi import Depends
 
