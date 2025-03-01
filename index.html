@@ -178,29 +178,21 @@
         }
 
         async function addProduct() {
-            const name = document.getElementById('productName').value.trim();
-            const description = document.getElementById('productDescription').value.trim();
-            const price = document.getElementById('productPrice').value.trim();
+            const name = document.getElementById('productName').value;
+            const description = document.getElementById('productDescription').value;
+            const price = document.getElementById('productPrice').value;
             const category = document.getElementById('productCategory').value;
             const image = document.getElementById('productImage').files[0];
 
-            const token = localStorage.getItem("token");  // Pobierz token JWT
+            const token = localStorage.getItem("token");  
 
-            // 🔹 Sprawdzenie, czy użytkownik jest zalogowany
             if (!token) { 
                 alert("Musisz być zalogowany, aby dodać produkt.");
                 return;
             }
 
-            // 🔹 Sprawdzenie, czy wszystkie pola są wypełnione
             if (!name || !description || !price || !image) {
                 alert("Wszystkie pola są wymagane!");
-                return;
-            }
-
-            // 🔹 Sprawdzenie, czy cena to liczba dodatnia
-            if (isNaN(price) || parseFloat(price) <= 0) {
-                alert("Cena musi być liczbą większą niż 0!");
                 return;
             }
 
@@ -218,30 +210,16 @@
                     body: formData
                 });
 
+                console.log(response);  // 🔹 Sprawdź, czy nie ma błędów HTTP
                 let result = await response.json();
-
-                // 🔹 Obsługa różnych kodów błędów
-                if (!response.ok) {
-                    if (response.status === 401) {
-                        alert("Sesja wygasła. Zaloguj się ponownie.");
-                        logout();
-                        return;
-                    } else if (response.status === 400) {
-                        alert(result.detail || "Błąd walidacji danych.");
-                        return;
-                    } else {
-                        alert("Błąd dodawania produktu: " + result.detail);
-                        return;
-                    }
-                }
+                console.log(result);  // 🔹 Sprawdź, co zwraca serwer
 
                 alert(result.message);
                 closeForm('addProductForm');
-                fetchProducts();  // 🔹 Odśwież listę produktów
-
+                fetchProducts();
             } catch (error) {
                 console.error("Błąd dodawania produktu:", error);
-                alert("Wystąpił błąd serwera. Spróbuj ponownie później.");
+                alert("Błąd dodawania produktu. Spróbuj ponownie.");
             }
         }
 
@@ -407,6 +385,27 @@
 document.addEventListener("DOMContentLoaded", updateUI);
 
 
+async function fetchProducts() {
+    const response = await fetch(`${BACKEND_URL}/products`);
+    console.log(response);  // 🔹 Sprawdź, czy nie ma błędu HTTP
+
+    const products = await response.json();
+    console.log(products);  // 🔹 Sprawdź, jakie produkty zwraca API
+
+    const container = document.getElementById("productsContainer");
+    container.innerHTML = "";
+
+    products.forEach(product => {
+        container.innerHTML += `
+            <div class="product" id="product-${product.id}">
+                <h3>${product.name}</h3>
+                <p>${product.description}</p>
+                <p><strong>${product.price} PLN</strong></p>
+                <img src="${product.image_url}" width="150">
+                <button onclick="deleteProduct('${product.id}')">Delete</button>
+            </div>`;
+    });
+}
 
 
     </script>

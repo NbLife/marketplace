@@ -269,20 +269,41 @@ async def add_product(
     price: float = Form(...),
     category: str = Form(...),
     image: UploadFile = File(...),
-    token: str = Depends(oauth2_scheme)  # Pobieranie tokena JWT
+    token: str = Depends(oauth2_scheme)  
 ):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-        user_email = payload.get("sub")  
+        user_email = payload.get("email")
         user = users_collection.find_one({"email": user_email})
 
         if not user:
+            print("❌ Błąd: Nie znaleziono użytkownika")
             raise HTTPException(status_code=401, detail="Nieprawidłowy token.")
 
-        # Logika dodawania produktu...
-        return {"message": "Produkt dodany!"} 
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Nieautoryzowany.")
+        print(f"🔹 Użytkownik: {user_email} dodaje produkt: {name}")
+
+        # Upload pliku do Azure Blob Storage
+        blob_client = blob_service_client.get_blob_client(container=CONTAINER_NAME, blob=image.filename)
+        blob_client.upload_blob(image.file, overwrite=True)
+        image_url = f"https://{AZURE_STORAGE_ACCOUNT_NAME}.blob.core.windows.net/{CONTAINER_NAME}/{image.filename}"
+
+        # Wstawienie produktu do bazy
+        result = collection.insert_one({
+            "name": name,
+            "description": description,
+            "price": price,
+            "category": category,
+            "image_url": image_url,
+            "owner": user_email
+        })
+
+        print(f"✅ Produkt dodany do bazy: {result.inserted_id}")
+
+        return {"message": "Produkt dodany!"}
+
+    except Exception as e:
+        print(f"❌ Błąd dodawania produktu: {e}")
+        raise HTTPException(status_code=500, detail=f"Błąd serwera: {e}")
 
 @app.delete("/delete_product/{product_id}")
 def delete_product(product_id: str, token: str = Depends(oauth2_scheme)):
