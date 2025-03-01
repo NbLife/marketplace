@@ -72,6 +72,23 @@
         .modal button:hover {
             background: #0056b3;
         }
+        footer {
+            background: #022041;
+            color: white;
+            text-align: center;
+            padding: 15px;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+        }
+        footer a {
+            color: #fff;
+            text-decoration: none;
+            margin: 0 10px;
+        }
+        footer a:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
@@ -143,7 +160,11 @@
         <input type="password" id="newPassword" placeholder="New Password">
         <button onclick="resetPassword()">Reset</button>
         <button onclick="closeForm('resetPasswordForm')">Close</button>
-    </div>    
+    </div>
+    <footer>
+        <p>&copy; 2025 Marketplace. All rights reserved.</p>
+        <p><a href="mailto:lifartlook@gmail.com">Kontakt</a> | <a href="#">Polityka prywatności</a> | <a href="#">Regulamin</a></p>
+    </footer>     
 
     <script>
         const BACKEND_URL = "https://my-backend-fastapi-hffeg4hcchcddhac.westeurope-01.azurewebsites.net";
