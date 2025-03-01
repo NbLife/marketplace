@@ -171,21 +171,29 @@
         }
 
         async function addProduct() {
-            const name = document.getElementById('productName').value;
-            const description = document.getElementById('productDescription').value;
-            const price = document.getElementById('productPrice').value;
+            const name = document.getElementById('productName').value.trim();
+            const description = document.getElementById('productDescription').value.trim();
+            const price = document.getElementById('productPrice').value.trim();
             const category = document.getElementById('productCategory').value;
             const image = document.getElementById('productImage').files[0];
 
             const token = localStorage.getItem("token");  // Pobierz token JWT
 
+            // 🔹 Sprawdzenie, czy użytkownik jest zalogowany
             if (!token) { 
                 alert("Musisz być zalogowany, aby dodać produkt.");
                 return;
             }
 
+            // 🔹 Sprawdzenie, czy wszystkie pola są wypełnione
             if (!name || !description || !price || !image) {
                 alert("Wszystkie pola są wymagane!");
+                return;
+            }
+
+            // 🔹 Sprawdzenie, czy cena to liczba dodatnia
+            if (isNaN(price) || parseFloat(price) <= 0) {
+                alert("Cena musi być liczbą większą niż 0!");
                 return;
             }
 
@@ -203,18 +211,30 @@
                     body: formData
                 });
 
-                if (response.status === 401) {
-                    alert("Nie jesteś zalogowany! Zaloguj się, aby dodać produkt.");
-                    return;
+                let result = await response.json();
+
+                // 🔹 Obsługa różnych kodów błędów
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        alert("Sesja wygasła. Zaloguj się ponownie.");
+                        logout();
+                        return;
+                    } else if (response.status === 400) {
+                        alert(result.detail || "Błąd walidacji danych.");
+                        return;
+                    } else {
+                        alert("Błąd dodawania produktu: " + result.detail);
+                        return;
+                    }
                 }
 
-                let result = await response.json();
                 alert(result.message);
                 closeForm('addProductForm');
-                fetchProducts();
+                fetchProducts();  // 🔹 Odśwież listę produktów
+
             } catch (error) {
                 console.error("Błąd dodawania produktu:", error);
-                alert("Błąd dodawania produktu. Spróbuj ponownie.");
+                alert("Wystąpił błąd serwera. Spróbuj ponownie później.");
             }
         }
 
@@ -224,9 +244,12 @@
             }
 
             try {
+                const token = localStorage.getItem("token");
                 const response = await fetch(`${BACKEND_URL}/delete_product/${productId}`, {
-                    method: "DELETE"
-                });
+                        method: "DELETE",
+                        headers: { "Authorization": `Bearer ${token}` }
+                    });
+
 
                 const result = await response.json();
                 alert(result.message);
@@ -243,11 +266,20 @@
 
         async function signup() {
             const username = document.getElementById('signupUsername').value.trim();
-            const email = document.getElementById('signupEmail').value.trim();  // 👈 Pobiera email
+            const email = document.getElementById('signupEmail').value.trim();
             const password = document.getElementById('signupPassword').value.trim();
 
-            if (username.length < 3 || password.length < 6 || email.length < 5) {
-                alert("Username must be at least 3 characters, password at least 6 characters, and email must be valid.");
+            // 🔹 Walidacja danych przed wysłaniem do backendu
+            if (username.length < 3) {
+                alert("Nazwa użytkownika musi mieć co najmniej 3 znaki.");
+                return;
+            }
+            if (password.length < 6) {
+                alert("Hasło musi mieć co najmniej 6 znaków.");
+                return;
+            }
+            if (!email.includes("@") || !email.includes(".")) {
+                alert("Podaj poprawny adres e-mail.");
                 return;
             }
 
@@ -255,20 +287,33 @@
                 const response = await fetch(`${BACKEND_URL}/signup`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ username, email, password })  // 👈 Wysyła email do backendu
+                    body: JSON.stringify({ username, email, password })
                 });
 
                 const result = await response.json();
-                alert(result.message);
 
-                if (response.ok) {
-                    closeForm('signupForm');
+                // 🔹 Obsługa błędów od backendu
+                if (!response.ok) {
+                    if (response.status === 400) {
+                        alert(result.detail || "Błąd rejestracji: Nieprawidłowe dane.");
+                    } else if (response.status === 500) {
+                        alert("Wewnętrzny błąd serwera. Spróbuj ponownie później.");
+                    } else {
+                        alert("Nieznany błąd. Spróbuj ponownie.");
+                    }
+                    return;
                 }
+
+                // 🔹 Jeśli wszystko OK, zamykamy formularz i informujemy użytkownika
+                alert("Rejestracja zakończona! Sprawdź e-mail, aby potwierdzić konto.");
+                closeForm('signupForm');
+
             } catch (error) {
-                console.error("Signup error:", error);
-                alert("Error during signup. Try again.");
+                console.error("Błąd rejestracji:", error);
+                alert("Wystąpił błąd sieci. Sprawdź połączenie i spróbuj ponownie.");
             }
         }
+
 
         async function login() {
             const email = document.getElementById('loginEmail').value.trim();  // 👈 Pobiera e-mail
@@ -278,8 +323,9 @@
                 const response = await fetch(`${BACKEND_URL}/login`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ email, password })  // 👈 Wysyła e-mail do backendu
+                    body: JSON.stringify({ email, password })  // 👈 Usuń username
                 });
+
 
                 const result = await response.json();
                 if (response.ok) {
@@ -322,20 +368,19 @@
         }
 
 
-
-
         function updateUI() {
-    const token = localStorage.getItem("token");
-    if (token) {
-        document.getElementById('logoutButton').style.display = "block";
-        document.getElementById('loginForm').classList.add('hidden');
-        document.getElementById('signupForm').classList.add('hidden');
-    } else {
-        document.getElementById('logoutButton').style.display = "none";
-    }
-}
+            const token = localStorage.getItem("token");
+            if (token) {
+                document.getElementById('logoutButton').style.display = "block";
+                document.getElementById('loginForm').classList.add('hidden');
+                document.getElementById('signupForm').classList.add('hidden');
+            } else {
+                document.getElementById('logoutButton').style.display = "none";
+            }
+        }
 
 document.addEventListener("DOMContentLoaded", updateUI);
+
 
 
 

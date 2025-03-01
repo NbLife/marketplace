@@ -51,6 +51,9 @@ AZURE_BLOB_CONNECTION_STRING = os.getenv("AZURE_BLOB_CONNECTION_STRING")
 AZURE_STORAGE_ACCOUNT_NAME = os.getenv("AZURE_STORAGE_ACCOUNT_NAME")
 CONTAINER_NAME = "product-images"
 SECRET_KEY = os.getenv("SECRET_KEY")
+# 🔹 Sprawdzenie, czy SECRET_KEY jest ustawiony
+if not SECRET_KEY:
+    raise RuntimeError("❌ ERROR: SECRET_KEY is not set! Sprawdź zmienne środowiskowe.")
 APP_ENV = os.getenv("APP_ENV", "development")
 BACKEND_URL = "https://my-backend-fastapi-hffeg4hcchcddhac.westeurope-01.azurewebsites.net"
 
@@ -144,9 +147,11 @@ async def signup(user: UserSignup):
         print(f"⚠️ Błąd walidacji: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
+    except pymongo.errors.DuplicateKeyError:
+        raise HTTPException(status_code=400, detail="Email lub nazwa użytkownika już istnieje.")
     except Exception as e:
-        print(f"❌ Błąd rejestracji: {e}")
-        raise HTTPException(status_code=500, detail="Wewnętrzny błąd serwera.")
+        raise HTTPException(status_code=500, detail=f"Błąd serwera: {str(e)}")
+
 
 
 from pydantic import BaseModel, EmailStr
@@ -278,7 +283,7 @@ async def add_product(
 ):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-        user_email = payload.get("email")
+        user_email = payload.get("sub")  
         user = users_collection.find_one({"email": user_email})
 
         if not user:
@@ -290,15 +295,25 @@ async def add_product(
         raise HTTPException(status_code=401, detail="Nieautoryzowany.")
 
 @app.delete("/delete_product/{product_id}")
-def delete_product(product_id: str):
-    """ Usuwa produkt z Cosmos DB """
+def delete_product(product_id: str, token: str = Depends(oauth2_scheme)):
     try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        user_email = payload.get("sub")
+        user = users_collection.find_one({"email": user_email})
+
+        if not user:
+            raise HTTPException(status_code=401, detail="Nieprawidłowy token.")
+
         result = collection.delete_one({"_id": ObjectId(product_id)})
         if result.deleted_count == 0:
             raise HTTPException(status_code=404, detail="Produkt nie został znaleziony")
+        
         return {"message": "Produkt usunięty"}
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Nieautoryzowany.")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Błąd usuwania produktu: {str(e)}")
+
 
 @app.get("/debug/env")
 def debug_env():
