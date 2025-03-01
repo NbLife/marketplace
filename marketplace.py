@@ -271,7 +271,7 @@ async def add_product(
             raise HTTPException(status_code=401, detail="Nieprawidłowy token.")
 
         # Logika dodawania produktu...
-        return {"message": "Produkt dodany!"}
+        return {"message": "Produkt dodany!"} 
     except JWTError:
         raise HTTPException(status_code=401, detail="Nieautoryzowany.")
 
