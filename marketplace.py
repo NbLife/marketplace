@@ -114,9 +114,8 @@ from pydantic import ValidationError
 @app.post("/signup")
 async def signup(user: UserSignup):
     try:
-        print(f"Przychodzące dane: {user.dict()}")  # Debugowanie
+        print(f"📩 Przychodzące dane: {user.dict()}")
 
-        # Sprawdzenie czy użytkownik istnieje
         if users_collection.find_one({"email": user.email}):
             raise HTTPException(status_code=400, detail="Email już istnieje.")
 
@@ -135,16 +134,20 @@ async def signup(user: UserSignup):
         })
 
         confirm_link = f"{BACKEND_URL}/confirm_email/{confirm_token}"
+        print(f"🔗 Link potwierdzenia: {confirm_link}")
+
         send_email(user.email, "Potwierdź email", f"Kliknij tutaj: {confirm_link}")
 
         return {"message": "Zarejestrowano! Sprawdź email, aby potwierdzić konto."}
 
     except ValidationError as e:
+        print(f"⚠️ Błąd walidacji: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
     except Exception as e:
         print(f"❌ Błąd rejestracji: {e}")
-        raise HTTPException(status_code=500, detail=f"Wewnętrzny błąd serwera: {str(e)}")
+        raise HTTPException(status_code=500, detail="Wewnętrzny błąd serwera.")
+
 
 from pydantic import BaseModel, EmailStr
 
@@ -156,15 +159,26 @@ class UserLogin(BaseModel):
 
 @app.post("/login")
 def login(user: UserLogin):
-    user_data = users_collection.find_one({"email": user.email})  # Logowanie po e-mailu, nie nazwie
-    if not user_data or not pwd_context.verify(user.password, user_data["password"]):
-        raise HTTPException(status_code=401, detail="Invalid credentials.")
+    try:
+        print(f"📩 Logowanie: {user.dict()}")
 
-    if not user_data.get("confirmed", False):
-        raise HTTPException(status_code=403, detail="Email not confirmed. Check your inbox.")
+        user_data = users_collection.find_one({"email": user.email})
+        if not user_data:
+            raise HTTPException(status_code=401, detail="Niepoprawne dane logowania.")
 
-    token = create_access_token({"sub": user.username})
-    return {"token": token}
+        if not pwd_context.verify(user.password, user_data["password"]):
+            raise HTTPException(status_code=401, detail="Niepoprawne dane logowania.")
+
+        if not user_data.get("confirmed", False):
+            raise HTTPException(status_code=403, detail="Email niepotwierdzony.")
+
+        token = create_access_token({"sub": user.email})  # 👈 Token na e-mail, nie username!
+        return {"token": token}
+
+    except Exception as e:
+        print(f"❌ Błąd logowania: {e}")
+        raise HTTPException(status_code=500, detail="Wewnętrzny błąd serwera.")
+
 
 @app.get("/confirm_email/{token}")
 def confirm_email(token: str):
