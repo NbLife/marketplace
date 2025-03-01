@@ -177,8 +177,14 @@
             const category = document.getElementById('productCategory').value;
             const image = document.getElementById('productImage').files[0];
 
-            if (!name || !description || !price || !image) {
-                alert("All fields are required!");
+            if (!name || !description || !price || !category || !image) {
+                alert("Wszystkie pola są wymagane!");
+                return;
+            }
+
+            const token = localStorage.getItem("token");
+            if (!token) {
+                alert("Musisz się zalogować, aby dodać produkt.");
                 return;
             }
 
@@ -189,27 +195,35 @@
             formData.append("category", category);
             formData.append("image", image);
 
-            const token = localStorage.getItem("token");  // Pobierz token JWT
-
             try {
                 let response = await fetch(`${BACKEND_URL}/add_product`, {
                     method: "POST",
-                    headers: { "Authorization": `Bearer ${token}` },  // 👈 Wysyłaj token w nagłówku
+                    headers: {
+                        "Authorization": `Bearer ${token}`  // Token w nagłówku
+                    },
                     body: formData
                 });
 
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        alert("Błąd autoryzacji. Zaloguj się ponownie.");
+                    } else {
+                        let errorData = await response.json();
+                        throw new Error(errorData.detail || "Błąd dodawania produktu.");
+                    }
+                    return;
+                }
+
                 let result = await response.json();
-                alert(result.message);
+                alert("Produkt dodany: " + result.message);
+
                 closeForm('addProductForm');
                 fetchProducts();
             } catch (error) {
-                console.error("Error adding product:", error);
-                alert("Error adding product. Please try again.");
+                console.error("Błąd dodawania produktu:", error);
+                alert(error.message || "Wystąpił błąd.");
             }
         }
-
-
-        fetchProducts();
 
         async function deleteProduct(productId) {
             if (!confirm("Are you sure you want to delete this product?")) {

@@ -109,16 +109,16 @@ class UserSignup(BaseModel):
     password: str
 
 @app.post("/signup")
-def signup(user: UserSignup):
+async def signup(user: UserSignup):
     print(f"Przychodzące dane: {user.dict()}")  # Debugowanie
 
     existing_user = users_collection.find_one({"email": user.email})
     if existing_user:
-        raise HTTPException(status_code=400, detail="Email already exists.")
+        raise HTTPException(status_code=400, detail="Email już istnieje.")
     
     existing_username = users_collection.find_one({"username": user.username})
     if existing_username:
-        raise HTTPException(status_code=400, detail="Username already exists.")
+        raise HTTPException(status_code=400, detail="Nazwa użytkownika już istnieje.")
     
     hashed_password = pwd_context.hash(user.password)
     confirm_token = create_access_token({"email": user.email}, timedelta(minutes=60))
@@ -131,12 +131,12 @@ def signup(user: UserSignup):
         "confirm_token": confirm_token
     })
 
-    confirm_link = f"https://my-backend-fastapi-hffeg4hcchcddhac.westeurope-01.azurewebsites.net/confirm_email/{confirm_token}"
+    confirm_link = f"{BACKEND_URL}/confirm_email/{confirm_token}"
     print(f"Wysłano email na: {user.email} z linkiem: {confirm_link}")  # Debugowanie
 
-    send_email(user.email, "Confirm your email", f"Click here to confirm: {confirm_link}")
+    send_email(user.email, "Potwierdź email", f"Kliknij tutaj: {confirm_link}")
 
-    return {"message": "User registered! Check your email to confirm your account."}
+    return {"message": "Zarejestrowano! Sprawdź email, aby potwierdzić konto."}
 
 from pydantic import BaseModel, EmailStr
 
@@ -233,8 +233,34 @@ def get_products():
     except Exception as e:
         logging.error(f"Błąd pobierania produktów: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Błąd pobierania produktów: {str(e)}")
-    
-from fastapi import Depends, Security
+    from fastapi import Depends
+from fastapi.security import OAuth2PasswordBearer
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+
+@app.post("/add_product")
+async def add_product(
+    name: str = Form(...),
+    description: str = Form(...),
+    price: float = Form(...),
+    category: str = Form(...),
+    image: UploadFile = File(...),
+    token: str = Depends(oauth2_scheme)  # Pobieranie tokena JWT
+):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        user_email = payload.get("email")
+        user = users_collection.find_one({"email": user_email})
+
+        if not user:
+            raise HTTPException(status_code=401, detail="Nieprawidłowy token.")
+
+        # Logika dodawania produktu...
+        return {"message": "Produkt dodany!"}
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Nieautoryzowany.")
+
+'''from fastapi import Depends, Security
 
 @app.post("/add_product")
 async def add_product(
@@ -271,7 +297,7 @@ async def add_product(
         return {"message": "Product added!", "id": str(inserted.inserted_id)}
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error adding product: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error adding product: {str(e)}")'''
 
 '''@app.post("/add_product")
 async def add_product(
