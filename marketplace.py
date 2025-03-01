@@ -117,14 +117,10 @@ from pydantic import ValidationError
 @app.post("/signup")
 async def signup(user: UserSignup):
     try:
-        print(f"📩 Przychodzące dane: {user.dict()}")
-
         if users_collection.find_one({"email": user.email}):
-            print("⚠️ Email już istnieje!")
             raise HTTPException(status_code=400, detail="Email już istnieje.")
 
         if users_collection.find_one({"username": user.username}):
-            print("⚠️ Nazwa użytkownika już istnieje!")
             raise HTTPException(status_code=400, detail="Nazwa użytkownika już istnieje.")
 
         hashed_password = pwd_context.hash(user.password)
@@ -139,24 +135,22 @@ async def signup(user: UserSignup):
         })
 
         confirm_link = f"{BACKEND_URL}/confirm_email/{confirm_token}"
-        print(f"🔗 Link potwierdzenia: {confirm_link}")
-
         send_email(user.email, "Potwierdź email", f"Kliknij tutaj: {confirm_link}")
 
-        print("✅ Rejestracja zakończona sukcesem!")
         return {"message": "Zarejestrowano! Sprawdź email, aby potwierdzić konto."}
+
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail="Niepoprawne dane wejściowe.")
 
     except Exception as e:
         print(f"❌ Błąd rejestracji: {e}")
-        raise HTTPException(status_code=500, detail=f"Błąd rejestracji: {e}")
+        raise HTTPException(status_code=500, detail="Błąd serwera.")
 
 from pydantic import BaseModel, EmailStr
 
 class UserLogin(BaseModel):
-    username: str
-    email: EmailStr  # 👈 Teraz logowanie odbywa się przez e-mail
+    email: EmailStr  # 👈 Logowanie tylko przez e-mail
     password: str
-
 
 @app.post("/login")
 def login(user: UserLogin):

@@ -137,6 +137,13 @@
         <button onclick="closeForm('addProductForm')">Close</button>
     </div>
 
+    <div id="resetPasswordForm" class="modal hidden">
+        <h2>Reset Password</h2>
+        <input type="password" id="newPassword" placeholder="New Password">
+        <button onclick="resetPassword()">Reset</button>
+        <button onclick="closeForm('resetPasswordForm')">Close</button>
+    </div>    
+
     <script>
         const BACKEND_URL = "https://my-backend-fastapi-hffeg4hcchcddhac.westeurope-01.azurewebsites.net";
 
@@ -306,35 +313,31 @@
 
 
         async function login() {
-            const email = document.getElementById('loginEmail').value.trim();  
+            const email = document.getElementById('loginEmail').value.trim();
             const password = document.getElementById('loginPassword').value.trim();
-
-            if (!email || !password) {
-                alert("Wypełnij wszystkie pola!");
-                return;
-            }
 
             try {
                 const response = await fetch(`${BACKEND_URL}/login`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ email: email, password: password }) // 👈 Sprawdź, czy API oczekuje emaila!
+                    body: JSON.stringify({ email, password }) 
                 });
+
+                console.log(response);  // Debugowanie
 
                 const result = await response.json();
 
-                if (!response.ok) {
-                    alert(result.detail || "Błąd logowania!");
-                    return;
+                if (response.ok) {
+                    localStorage.setItem("token", result.token);
+                    alert("Login successful!");
+                    closeForm('loginForm');
+                    updateUI();
+                } else {
+                    alert(result.detail);
                 }
-
-                localStorage.setItem("token", result.token);
-                alert("Zalogowano pomyślnie!");
-                closeForm('loginForm');
-                updateUI();
             } catch (error) {
-                console.error("Błąd logowania:", error);
-                alert("Wystąpił błąd logowania. Spróbuj ponownie.");
+                console.error("Login error:", error);
+                alert("Błąd podczas logowania. Spróbuj ponownie.");
             }
         }
 
@@ -363,26 +366,30 @@
             }
         }
 
-        async function resetPassword(newPassword, token) {
+        async function resetPassword() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get("token");
+            const newPassword = document.getElementById('newPassword').value;
+
             try {
                 const response = await fetch(`${BACKEND_URL}/reset_password/${token}`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ new_password: newPassword }) // 👈 API wymaga new_password!
+                    body: JSON.stringify({ new_password: newPassword })
                 });
 
                 const result = await response.json();
-                if (!response.ok) {
-                    alert(result.detail || "Błąd resetowania hasła!");
-                    return;
-                }
+                alert(result.message);
 
-                alert("Hasło zmienione! Możesz się teraz zalogować.");
+                if (response.ok) {
+                    closeForm('resetPasswordForm');
+                }
             } catch (error) {
-                console.error("Błąd resetowania hasła:", error);
-                alert("Coś poszło nie tak. Spróbuj ponownie.");
+                console.error("Reset error:", error);
+                alert("Error resetting password.");
             }
-        }
+}
+
 
 
 
