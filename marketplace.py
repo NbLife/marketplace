@@ -232,7 +232,7 @@ def reset_password_page(token: str):
 class ResetPasswordRequest(BaseModel):
     new_password: str
 
-@app.post("/reset_password/{token}")
+@app.post("/reset_password/{token}", response_class=HTMLResponse)
 async def reset_password(token: str, request: Request):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
@@ -240,7 +240,7 @@ async def reset_password(token: str, request: Request):
         user = users_collection.find_one({"email": email})
 
         if not user:
-            raise HTTPException(status_code=400, detail="Nie znaleziono użytkownika.")
+            return HTMLResponse("<h2>Nie znaleziono użytkownika.</h2>", status_code=400)
 
         form_data = await request.form()
         new_password = form_data["new_password"]
@@ -248,7 +248,22 @@ async def reset_password(token: str, request: Request):
         hashed_password = pwd_context.hash(new_password)
         users_collection.update_one({"email": email}, {"$set": {"password": hashed_password}})
 
-        return RedirectResponse(url="/login", status_code=303)  # 👈 Przekierowanie do logowania
+        # 👇 Wyświetlenie komunikatu + przekierowanie po 3 sekundach
+        return HTMLResponse("""
+        <html>
+        <head>
+            <script>
+                setTimeout(function() {
+                    window.location.href = 'https://orange-ocean-095b25503.4.azurestaticapps.net/';
+                }, 3000); // Przekierowanie po 3 sekundach
+            </script>
+        </head>
+        <body>
+            <h2>Hasło zostało zmienione pomyślnie! ✅</h2>
+            <p>Za chwilę zostaniesz przekierowany na stronę główną...</p>
+        </body>
+        </html>
+        """)
 
     except jwt.ExpiredSignatureError:
         return HTMLResponse("<h2>Token wygasł. Spróbuj ponownie.</h2>", status_code=400)
