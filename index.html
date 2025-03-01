@@ -388,21 +388,19 @@
                 console.error("Reset error:", error);
                 alert("Error resetting password.");
             }
-}
-
-
-
-
-        function updateUI() {
-            const token = localStorage.getItem("token");
-            if (token) {
-                document.getElementById('logoutButton').style.display = "block";
-                document.getElementById('loginForm').classList.add('hidden');
-                document.getElementById('signupForm').classList.add('hidden');
-            } else {
-                document.getElementById('logoutButton').style.display = "none";
-            }
         }
+
+function updateUI() {
+    const token = localStorage.getItem("token");
+    if (token) {
+        document.getElementById('logoutButton').style.display = "block";
+        document.getElementById('loginForm').classList.add('hidden');
+        document.getElementById('signupForm').classList.add('hidden');
+    } else {
+        document.getElementById('logoutButton').style.display = "none";
+    }
+    fetchProducts(); // 👈 Dodane, aby pobrać produkty po załadowaniu strony
+}
 
 document.addEventListener("DOMContentLoaded", updateUI);
 
